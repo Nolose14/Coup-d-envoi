@@ -14,8 +14,8 @@ const CACHE_KEY = "coup-d-envoi:classements";
 const COMP_KEY = "coup-d-envoi:classements:competition";
 type Mode = "forme" | "details";
 
-const SHORT: Record<string, string> = { CL: "LDC", FL1: "Ligue 1", PL: "Premier League", PD: "Liga" };
-const ORDER: CompetitionId[] = ["FL1", "CL", "PL", "PD"];
+const SHORT: Record<string, string> = { CL: "LDC", FL1: "Ligue 1", FL2: "Ligue 2", FL3: "Ligue 3", PL: "Premier League", PD: "Liga" };
+const ORDER: CompetitionId[] = ["FL1", "FL2", "FL3", "CL", "PL", "PD"];
 
 export function StandingsView() {
   const [data, setData] = useState<StandingsPayload | null>(null);
@@ -134,6 +134,12 @@ export function StandingsView() {
             Réessayer
           </button>
         </div>
+      )}
+
+      {data && data.warnings.length > 0 && !error && (
+        <p className="mx-4 mb-2 text-[12px] text-label-3">
+          Certains classements n&apos;ont pas pu être chargés : {data.warnings.join(" ")}
+        </p>
       )}
 
       {!data && loading && (

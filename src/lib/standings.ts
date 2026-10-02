@@ -7,6 +7,7 @@ import { CLUB_COMPETITIONS } from "@/config/competitions";
 import { addDays, isoDay } from "@/lib/dates";
 import { getMatches } from "@/lib/matches";
 import { fd, type FdTeam } from "@/lib/providers/football-data";
+import { fetchTsdbClubTables } from "@/lib/providers/thesportsdb-clubs";
 import type { CompetitionId, RecentResult, ResultLetter, StandingTable, StandingsPayload, TeamInfo } from "@/lib/types";
 
 interface FdStandingRow {
@@ -114,8 +115,27 @@ const getTables = unstable_cache(
   { revalidate: 3 * 3600, tags: ["standings"] },
 );
 
+const getTsdbTables = unstable_cache(fetchTsdbClubTables, ["standings-tsdb-v1"], {
+  revalidate: 3 * 3600,
+  tags: ["standings"],
+});
+
 export async function getStandings(): Promise<StandingsPayload> {
-  const base = await getTables();
+  const [main, extra] = await Promise.allSettled([getTables(), getTsdbTables()]);
+  if (main.status === "rejected" && (extra.status === "rejected" || extra.value.tables.length === 0)) {
+    throw main.reason;
+  }
+  const base = {
+    updatedAt: main.status === "fulfilled" ? main.value.updatedAt : new Date().toISOString(),
+    tables: [
+      ...(main.status === "fulfilled" ? main.value.tables : []),
+      ...(extra.status === "fulfilled" ? extra.value.tables : []),
+    ],
+    warnings: [
+      ...(main.status === "fulfilled" ? main.value.warnings : [String((main.reason as Error).message)]),
+      ...(extra.status === "fulfilled" ? extra.value.warnings : [`Ligue 2 / Ligue 3 : ${(extra.reason as Error).message}`]),
+    ],
+  };
 
   // Prochain match de chaque équipe (toutes compétitions), tiré du cache des matchs
   let upcoming: Awaited<ReturnType<typeof getMatches>>["matches"] = [];

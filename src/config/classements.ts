@@ -26,6 +26,15 @@ export const ZONES: Partial<Record<CompetitionId, Zone[]>> = {
     { from: 16, to: 16, label: "Barrage de relégation",        color: "#FFD60A" },
     { from: 17, to: 18, label: "Relégation",                   color: "#FF453A" },
   ],
+  FL2: [
+    { from: 1,  to: 2,  label: "Montée en Ligue 1",       color: "#0A84FF" },
+    { from: 3,  to: 5,  label: "Play-offs d'accession",   color: "#64D2FF" },
+    { from: 16, to: 16, label: "Barrage de relégation",   color: "#FFD60A" },
+    { from: 17, to: 18, label: "Relégation",              color: "#FF453A" },
+  ],
+  FL3: [
+    { from: 1,  to: 2,  label: "Montée en Ligue 2",       color: "#0A84FF" },
+  ],
   PL: [
     { from: 1,  to: 4,  label: "Ligue des champions",  color: "#0A84FF" },
     { from: 5,  to: 5,  label: "Ligue Europa",         color: "#FF9F0A" },

@@ -36,6 +36,25 @@ export const INTERNATIONAL_COMPETITIONS: InternationalCompetition[] = [
   { id: "FRIENDLY", name: "Match amical",           color: "#C7CBD6", tsdbName: /friendl/i,                               tsdbIds: [4562] },
 ];
 
+/** Championnats de clubs récupérés via TheSportsDB (absents de l'offre gratuite de football-data). */
+export interface TsdbClubCompetition {
+  id: CompetitionId;
+  name: string;
+  short: string;
+  color: string;
+  tsdbName: RegExp;
+  tsdbExclude: RegExp;
+  tsdbIds: number[];
+}
+
+/** Jours scannés à l'avance pour Ligue 2 / Ligue 3 (1 requête par jour et par championnat). */
+export const TSDB_CLUB_WINDOW_DAYS = 14;
+
+export const TSDB_CLUB_COMPETITIONS: TsdbClubCompetition[] = [
+  { id: "FL2", name: "Ligue 2", short: "Ligue 2", color: "#F2A6C9", tsdbName: /ligue 2/i, tsdbExclude: /women|féminin|u1\d|u2\d/i, tsdbIds: [4401] },
+  { id: "FL3", name: "Ligue 3", short: "Ligue 3", color: "#9BD87A", tsdbName: /ligue 3|national$|national 1$/i, tsdbExclude: /national 2|national 3|women|féminin|u1\d|u2\d/i, tsdbIds: [] },
+];
+
 export const COMPETITION_COLORS: Record<string, string> = Object.fromEntries(
-  [...CLUB_COMPETITIONS, ...INTERNATIONAL_COMPETITIONS].map((c) => [c.id, c.color]),
+  [...CLUB_COMPETITIONS, ...TSDB_CLUB_COMPETITIONS, ...INTERNATIONAL_COMPETITIONS].map((c) => [c.id, c.color]),
 );

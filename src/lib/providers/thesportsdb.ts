@@ -23,7 +23,7 @@ async function throttle() {
   lastCall = Date.now();
 }
 
-async function tsdb<T>(path: string): Promise<T | null> {
+export async function tsdb<T>(path: string): Promise<T | null> {
   let lastStatus = 0;
   for (const key of KEYS) {
     await throttle();
@@ -39,8 +39,9 @@ async function tsdb<T>(path: string): Promise<T | null> {
 }
 
 interface TsdbLeague { idLeague: string; strLeague: string; strSport?: string }
-interface TsdbEvent {
+export interface TsdbEvent {
   idEvent: string;
+  intRound?: string | null;
   strLeague?: string;
   strHomeTeam?: string;
   strAwayTeam?: string;
@@ -54,19 +55,27 @@ interface TsdbEvent {
   strStatus?: string | null;
 }
 
+interface LeagueLookup {
+  id: string;
+  tsdbName: RegExp;
+  tsdbIds: number[];
+  tsdbExclude?: RegExp;
+}
+
 /** Retrouve l'identifiant de la compétition (vérifié par son nom). Cache 7 jours. */
-function resolveLeagueId(comp: InternationalCompetition) {
+export function resolveLeagueId(comp: LeagueLookup, areas = ["World", "Europe", "International"]) {
+  const excluded = (name: string) => (comp.tsdbExclude ?? /women|u2\d|u1\d/i).test(name);
   return unstable_cache(
     async (): Promise<string | null> => {
       for (const id of comp.tsdbIds) {
         const data = await tsdb<{ leagues?: TsdbLeague[] | null }>(`lookupleague.php?id=${id}`);
         const league = data?.leagues?.[0];
-        if (league && comp.tsdbName.test(league.strLeague)) return league.idLeague;
+        if (league && comp.tsdbName.test(league.strLeague) && !excluded(league.strLeague)) return league.idLeague;
       }
-      for (const area of ["World", "Europe", "International"]) {
+      for (const area of areas) {
         const data = await tsdb<Record<string, TsdbLeague[] | null>>(`search_all_leagues.php?c=${area}&s=Soccer`);
         const list = data?.countries ?? data?.countrys ?? data?.leagues ?? [];
-        const found = (list ?? []).find((l) => comp.tsdbName.test(l.strLeague) && !/women|u2\d|u1\d/i.test(l.strLeague));
+        const found = (list ?? []).find((l) => comp.tsdbName.test(l.strLeague) && !excluded(l.strLeague));
         if (found) return found.idLeague;
       }
       return null;
@@ -76,7 +85,7 @@ function resolveLeagueId(comp: InternationalCompetition) {
   )();
 }
 
-function kickoffOf(e: TsdbEvent): { iso: string; confirmed: boolean } | null {
+export function kickoffOf(e: TsdbEvent): { iso: string; confirmed: boolean } | null {
   let raw = e.strTimestamp ?? (e.dateEvent ? `${e.dateEvent}T${e.strTime || "00:00:00"}` : null);
   if (!raw) return null;
   if (!/[zZ]|[+-]\d\d:?\d\d$/.test(raw)) raw += "Z"; // TheSportsDB donne l'heure en UTC

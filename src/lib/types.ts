@@ -1,7 +1,7 @@
 export type Section = "clubs" | "selections";
 
 export type CompetitionId =
-  | "CL" | "FL1" | "PL" | "PD"           // clubs
+  | "CL" | "FL1" | "PL" | "PD" | "FL2" | "FL3" // clubs
   | "NL" | "WCQ" | "ECQ" | "FRIENDLY";   // sélections
 
 export interface TeamInfo {

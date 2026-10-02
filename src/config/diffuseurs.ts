@@ -7,6 +7,8 @@
  *  - Ligue 1 : Ligue 1+ (les 9 matchs de chaque journée, plus de match sur beIN).
  *  - Premier League : Canal+.
  *  - Liga : DAZN et Disney+ (depuis 2026-2027, plus sur beIN).
+ *  - Ligue 2 : beIN Sports.
+ *  - Ligue 3 Betclic (ex-National) : Ligue 1+ (intégralité, jusqu'en 2029).
  *  - Équipe de France : TF1 / TF1+.
  *  - Ligue des nations hors Bleus : L'Équipe (à revérifier, source unique).
  *
@@ -34,6 +36,8 @@ export const COMPETITION_BROADCASTERS: Record<CompetitionId, BroadcasterKey[]> =
   FL1: ["ligue1plus"],
   PL: ["canal"],
   PD: ["dazn", "disney"],
+  FL2: ["bein"],
+  FL3: ["ligue1plus"],
   NL: ["lequipe"],
   WCQ: [],
   ECQ: [],
