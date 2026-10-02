@@ -11,7 +11,6 @@ export interface ClubCompetition {
 export interface InternationalCompetition {
   id: CompetitionId;
   name: string;
-  espnSlug: string; // identifiant de la compétition chez ESPN
   color: string;
 }
 
@@ -27,10 +26,10 @@ export const CLUB_COMPETITIONS: ClubCompetition[] = [
 ];
 
 export const INTERNATIONAL_COMPETITIONS: InternationalCompetition[] = [
-  { id: "NL",       name: "Ligue des nations",      espnSlug: "uefa.nations",     color: "#8EA2FF" },
-  { id: "WCQ",      name: "Qualifications Mondial", espnSlug: "fifa.worldq.uefa", color: "#FF8A7A" },
-  { id: "ECQ",      name: "Qualifications Euro",    espnSlug: "uefa.euroq",       color: "#5EE0C4" },
-  { id: "FRIENDLY", name: "Match amical",           espnSlug: "fifa.friendly",    color: "#C7CBD6" },
+  { id: "NL",       name: "Ligue des nations",      color: "#8EA2FF" },
+  { id: "WCQ",      name: "Qualifications Mondial", color: "#FF8A7A" },
+  { id: "ECQ",      name: "Qualifications Euro",    color: "#5EE0C4" },
+  { id: "FRIENDLY", name: "Match amical",           color: "#C7CBD6" },
 ];
 
 export const COMPETITION_COLORS: Record<string, string> = Object.fromEntries(

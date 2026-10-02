@@ -1,9 +1,3 @@
-/** Sélections via ESPN, appelé depuis le serveur Vercel. */
-import { loadInternationalMatches } from "./espn-core";
-
-export function fetchInternationalMatches() {
-  return loadInternationalMatches(async (url) => {
-    const res = await fetch(url, { cache: "no-store", headers: { Accept: "application/json" } });
-    return { status: res.status, data: res.ok ? await res.json() : null };
-  });
-}
+// Ancienne tentative via ESPN, abandonnée : ESPN bloque les applications externes.
+// Ce fichier ne sert plus et peut être supprimé.
+export {};

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { dayLabel, groupByDay, relativeUpdate } from "@/lib/dates";
-import { fetchSelectionsFromDevice } from "@/lib/selections-client";
 import type { MatchesPayload, Section } from "@/lib/types";
 import { MatchCard } from "./MatchCard";
 import { PullToRefresh } from "./PullToRefresh";
@@ -36,18 +35,7 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
     try {
       const res = await fetch(`/api/matches?section=${section}`);
       const json = await res.json();
-      let payload: MatchesPayload | null = res.ok ? (json as MatchesPayload) : null;
-
-      // Sélections : si le serveur n'obtient rien d'ESPN, l'appareil essaie lui-même.
-      const serverFailed = !payload || (payload.matches.length === 0 && payload.warnings.length > 0);
-      if (section === "selections" && serverFailed) {
-        try {
-          payload = await fetchSelectionsFromDevice();
-        } catch (e) {
-          throw new Error(`ESPN depuis l'appareil : ${(e as Error).message}`);
-        }
-      }
-
+      const payload: MatchesPayload | null = res.ok ? (json as MatchesPayload) : null;
       if (!payload) throw new Error(json.error ?? "Le serveur n'a pas répondu correctement.");
       setData(payload);
       setError(null);

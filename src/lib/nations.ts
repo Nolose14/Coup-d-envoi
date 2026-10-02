@@ -27,3 +27,22 @@ export const NATION_NAMES_FR: Record<string, string> = {
 
 export const toFrenchNation = (name: string) => NATION_NAMES_FR[name] ?? name;
 export const isNotableNation = (name: string) => name in NATION_NAMES_FR;
+
+/** Codes pays pour afficher les drapeaux (flagcdn.com, gratuit). */
+const FLAG_CODES: Record<string, string> = {
+  France: "fr", Belgique: "be", Suisse: "ch", Allemagne: "de", Espagne: "es", Italie: "it",
+  Portugal: "pt", Angleterre: "gb-eng", "Pays-Bas": "nl", Croatie: "hr", Danemark: "dk",
+  Suède: "se", Norvège: "no", Autriche: "at", Pologne: "pl", Écosse: "gb-sct",
+  "Pays de Galles": "gb-wls", "Irlande du Nord": "gb-nir", Irlande: "ie", Serbie: "rs",
+  Turquie: "tr", Ukraine: "ua", Tchéquie: "cz", Hongrie: "hu", Grèce: "gr", Roumanie: "ro",
+  Slovaquie: "sk", Slovénie: "si", Albanie: "al", Géorgie: "ge", Islande: "is", Finlande: "fi",
+  Brésil: "br", Argentine: "ar", Uruguay: "uy", Colombie: "co", "États-Unis": "us",
+  Mexique: "mx", Canada: "ca", Maroc: "ma", Algérie: "dz", Tunisie: "tn", Sénégal: "sn",
+  "Côte d'Ivoire": "ci", Cameroun: "cm", Égypte: "eg", Nigeria: "ng", Japon: "jp",
+  "Corée du Sud": "kr", Australie: "au",
+};
+
+export function flagUrl(nameFr: string): string | null {
+  const code = FLAG_CODES[nameFr];
+  return code ? `https://flagcdn.com/w80/${code}.png` : null;
+}

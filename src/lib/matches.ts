@@ -1,18 +1,18 @@
 /**
  * Point d'entrée des données. Le cache Vercel (Data Cache) garde le résultat :
  *  - clubs : 1 h        → 4 requêtes/heure max vers football-data.org, quel que soit le trafic
- *  - sélections : 6 h   → 4 requêtes toutes les 6 h vers ESPN (gratuit, sans clé)
+ *  - sélections : liste saisie dans src/config/matchs-selections.ts (aucune API)
  * Le premier visiteur après expiration reçoit les données en cache pendant
  * que la nouvelle version se calcule en arrière-plan (stale-while-revalidate).
  */
 import { unstable_cache } from "next/cache";
 import { resolveBroadcasters } from "@/config/diffuseurs";
-import { fetchInternationalMatches } from "@/lib/providers/espn";
+import { fetchInternationalMatches } from "@/lib/providers/manual-selections";
 import { fetchClubMatches } from "@/lib/providers/football-data";
 import type { MatchesPayload, Section } from "@/lib/types";
 
 const getClubs = unstable_cache(fetchClubMatches, ["clubs-v1"], { revalidate: 3600, tags: ["matches"] });
-const getSelections = unstable_cache(fetchInternationalMatches, ["selections-v3"], { revalidate: 6 * 3600, tags: ["matches"] });
+const getSelections = unstable_cache(fetchInternationalMatches, ["selections-v4"], { revalidate: 600, tags: ["matches"] });
 
 export async function getMatches(section: Section): Promise<MatchesPayload> {
   const result = section === "clubs" ? await getClubs() : await getSelections();
