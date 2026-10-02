@@ -114,6 +114,27 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
   );
   const activeFilter = availableFilters.some((f) => f.id === filter) ? filter : "all";
 
+  // Garde la compétition choisie visible dans la barre (utile pour celles tout à droite)
+  const chipsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const row = chipsRef.current;
+    const chip = row?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (!row || !chip) return;
+    const left = chip.offsetLeft - 16;
+    const right = chip.offsetLeft + chip.offsetWidth + 40 - row.clientWidth;
+    if (row.scrollLeft > left) row.scrollTo({ left, behavior: "smooth" });
+    else if (row.scrollLeft < right) row.scrollTo({ left: right, behavior: "smooth" });
+  }, [activeFilter]);
+
+  // Messages techniques du serveur (« Ligue 3 : TheSportsDB : trop de requêtes… ») → juste le nom
+  const unavailable = useMemo(
+    () => [...new Set((data?.warnings ?? [])
+          .map((w) => w.split(" : ")[0].trim())
+          .map((n) => (/thesportsdb|football-data|requ[eê]te|http/i.test(n) || n.length > 30 ? "Certains matchs" : n))
+          .filter(Boolean))],
+    [data],
+  );
+
   // Liste des équipes présentes dans les prochains matchs, triée par nom
   const teamOptions = useMemo<TeamOption[]>(() => {
     const map = new Map<string, TeamOption>();
@@ -165,30 +186,47 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
         className="sticky z-10 border-b border-separator bg-bg/90 backdrop-blur-xl"
         style={{ top: "env(safe-area-inset-top)" }}
       >
-        <div className="flex gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex items-center">
+          {/* Compétitions : défilent horizontalement, fondu à droite pour montrer qu'il y en a d'autres */}
+          <div
+            ref={chipsRef}
+            className="flex min-w-0 flex-1 gap-2 overflow-x-auto py-3 pl-4 pr-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{
+              WebkitMaskImage: "linear-gradient(to right, #000 calc(100% - 32px), transparent)",
+              maskImage: "linear-gradient(to right, #000 calc(100% - 32px), transparent)",
+            }}
+          >
+            {availableFilters.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setFilter(f.id)}
+                aria-pressed={activeFilter === f.id}
+                className="chip"
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Équipes : toujours visible à droite, ne défile pas avec les compétitions */}
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
             aria-haspopup="dialog"
-            className={`chip ${selectedTeams.length > 0 ? "chip-accent" : ""}`}
+            aria-label={selectedTeams.length > 0 ? `Équipes, ${selectedTeams.length} choisie(s)` : "Choisir des équipes"}
+            className={`chip relative mr-4 ${selectedTeams.length > 0 ? "chip-accent" : ""}`}
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
               <path d="M4 6h16M7 12h10M10 18h4" />
             </svg>
-            Équipes{selectedTeams.length > 0 && ` (${selectedTeams.length})`}
+            Équipes
+            {selectedTeams.length > 0 && (
+              <span className="-mr-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[12px] font-semibold text-accent">
+                {selectedTeams.length}
+              </span>
+            )}
           </button>
-          <span className="my-1 w-px shrink-0 bg-separator" aria-hidden />
-          {availableFilters.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => setFilter(f.id)}
-              aria-pressed={activeFilter === f.id}
-              className="chip"
-            >
-              {f.label}
-            </button>
-          ))}
         </div>
 
         {selectedTeams.length > 0 && (
@@ -213,7 +251,7 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
       </div>
 
       {(offline || error) && (
-        <div className="mx-4 mb-2 rounded-xl bg-surface px-3.5 py-2.5 text-[13px] text-label-2">
+        <div className="mx-4 mt-3 rounded-xl bg-surface px-3.5 py-2.5 text-[13px] text-label-2">
           {offline ? "Hors connexion. Ce sont les derniers matchs enregistrés." : error}
           {!offline && (
             <button type="button" onClick={load} className="ml-2 font-semibold text-accent active:opacity-60">
@@ -223,10 +261,21 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
         </div>
       )}
 
-      {data && data.warnings.length > 0 && !error && (
-        <p className="mx-4 mb-2 text-[12px] text-label-3">
-          Certaines compétitions n&apos;ont pas pu être chargées : {data.warnings.join(" ")}
-        </p>
+      {unavailable.length > 0 && !error && !offline && (
+        <div className="mx-4 mt-3 flex items-center gap-2.5 rounded-xl bg-surface px-3.5 py-2.5 text-[13px] text-label-2">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning" aria-hidden />
+          <span className="flex-1">
+            {unavailable.join(", ")} {unavailable.length > 1 ? "momentanément indisponibles" : "momentanément indisponible"}
+          </span>
+          <button
+            type="button"
+            onClick={load}
+            disabled={loading}
+            className="font-semibold text-accent active:opacity-60 disabled:text-label-3"
+          >
+            {loading ? "…" : "Réessayer"}
+          </button>
+        </div>
       )}
 
       {/* Squelettes au premier chargement */}

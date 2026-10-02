@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TeamLogo } from "./TeamLogo";
 
 export interface TeamOption {
@@ -10,6 +10,30 @@ export interface TeamOption {
 }
 
 const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+/**
+ * Zone réellement visible à l'écran. Sur iPhone, le clavier recouvre la page
+ * sans la redimensionner : sans ce calcul, la feuille se retrouvait cachée
+ * derrière le clavier dès qu'on touchait la recherche.
+ */
+function useVisibleArea(active: boolean) {
+  const [area, setArea] = useState<{ top: number; height: number; keyboard: boolean } | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () =>
+      setArea({ top: vv.offsetTop, height: vv.height, keyboard: window.innerHeight - vv.height > 120 });
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, [active]);
+  return area;
+}
 
 /** Feuille qui monte du bas de l'écran, comme dans les apps iOS. */
 export function TeamPicker({
@@ -26,14 +50,18 @@ export function TeamPicker({
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const area = useVisibleArea(open);
 
   // Bloque le défilement de la page derrière la feuille
   useEffect(() => {
     if (!open) return;
+    const scrollY = window.scrollY;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previous;
+      window.scrollTo(0, scrollY); // iOS peut décaler la page en ouvrant le clavier
       setQuery("");
     };
   }, [open]);
@@ -50,17 +78,30 @@ export function TeamPicker({
   const toggle = (name: string) =>
     onChange(selected.includes(name) ? selected.filter((n) => n !== name) : [...selected, name]);
 
+  const keyboard = area?.keyboard ?? false;
+
   return (
-    <div className="fixed inset-0 z-30" role="dialog" aria-modal="true" aria-label="Choisir des équipes">
+    <div
+      className="fixed inset-x-0 top-0 z-30"
+      style={{ top: area?.top ?? 0, height: area ? area.height : "100dvh" }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Choisir des équipes"
+    >
       <button type="button" aria-label="Fermer" onClick={onClose} className="absolute inset-0 bg-black/60" />
 
       <div
-        className="sheet-up absolute inset-x-0 bottom-0 mx-auto flex max-h-[85dvh] max-w-xl flex-col rounded-t-3xl bg-surface"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="sheet-up absolute inset-x-0 bottom-0 mx-auto flex max-w-xl flex-col rounded-t-3xl bg-surface"
+        style={{
+          // Clavier ouvert : la feuille prend toute la hauteur libre au-dessus du clavier
+          height: keyboard ? "calc(100% - 8px)" : undefined,
+          maxHeight: keyboard ? undefined : "calc(100% - env(safe-area-inset-top) - 24px)",
+          paddingBottom: keyboard ? 0 : "env(safe-area-inset-bottom)",
+        }}
       >
-        <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-surface-2" />
+        <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-surface-2" />
 
-        <header className="flex items-center justify-between px-4 pb-2 pt-3">
+        <header className="flex shrink-0 items-center justify-between px-4 pb-2 pt-3">
           <button
             type="button"
             onClick={() => onChange([])}
@@ -69,25 +110,68 @@ export function TeamPicker({
           >
             Effacer
           </button>
-          <h2 className="font-display text-[18px] font-medium">Équipes</h2>
+          <h2 className="font-display text-[18px] font-medium">
+            Équipes{selected.length > 0 && <span className="text-label-3"> · {selected.length}</span>}
+          </h2>
           <button type="button" onClick={onClose} className="min-w-16 text-right text-[16px] font-semibold text-accent">
             OK
           </button>
         </header>
 
-        <div className="px-4 pb-2">
+        <div className="relative shrink-0 px-4 pb-2">
+          <svg
+            viewBox="0 0 24 24"
+            className="pointer-events-none absolute left-7 top-[11px] h-[18px] w-[18px] text-label-3"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.2}
+            strokeLinecap="round"
+            aria-hidden
+          >
+            <circle cx="11" cy="11" r="6.5" />
+            <path d="m16 16 4 4" />
+          </svg>
           <input
-            type="search"
+            ref={inputRef}
+            type="text"
+            inputMode="search"
+            enterKeyHint="done"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur(); // ferme le clavier
+            }}
             placeholder="Rechercher une équipe"
-            className="h-10 w-full rounded-xl bg-surface-2 px-3.5 text-[16px] text-label placeholder:text-label-3 focus:outline-none focus:ring-2 focus:ring-accent"
+            aria-label="Rechercher une équipe"
+            className="h-10 w-full rounded-xl bg-surface-2 pl-10 pr-10 text-[16px] text-label placeholder:text-label-3 focus:outline-none focus:ring-2 focus:ring-accent"
           />
+          {query && (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                inputRef.current?.focus();
+              }}
+              aria-label="Effacer la recherche"
+              className="absolute right-6 top-0 flex h-10 w-8 items-center justify-center text-label-3"
+            >
+              <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden>
+                <circle cx="12" cy="12" r="10" fill="currentColor" />
+                <path d="m8.5 8.5 7 7m0-7-7 7" stroke="var(--color-surface-2)" strokeWidth={2.2} strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
         </div>
 
-        <ul className="flex-1 overflow-y-auto overscroll-contain px-2 pb-3">
+        <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-3">
           {visible.length === 0 && (
-            <li className="px-3 py-8 text-center text-[15px] text-label-2">Aucune équipe ne correspond.</li>
+            <li className="px-6 py-8 text-center text-[15px] text-label-2">
+              Aucune équipe ne correspond. Seules les équipes qui ont un match à venir dans l&apos;app sont proposées.
+            </li>
           )}
           {visible.map((team) => {
             const checked = selected.includes(team.name);
