@@ -179,6 +179,27 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
           const t = new Date(m.kickoff).getTime();
           return Date.now() >= t && Date.now() < t + 2 * 3600_000;
         })}
+        action={
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            aria-haspopup="dialog"
+            aria-label={selectedTeams.length > 0 ? `Mes équipes, ${selectedTeams.length} choisie(s)` : "Choisir mes équipes"}
+            className={`font-display flex h-9 shrink-0 items-center gap-1.5 rounded-full pl-3 text-[14px] font-medium tracking-[0.04em] active:opacity-70 ${
+              selectedTeams.length > 0 ? "bg-accent pr-1.5 text-white" : "bg-surface pr-3.5 text-label-2 shadow-[inset_0_0_0_1px_var(--color-separator)]"
+            }`}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
+              <path d="M4 6h16M7 12h10M10 18h4" />
+            </svg>
+            Mes équipes
+            {selectedTeams.length > 0 && (
+              <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-white px-1.5 font-sans text-[12px] font-semibold text-accent">
+                {selectedTeams.length}
+              </span>
+            )}
+          </button>
+        }
       />
 
       {/* Filtres, collés en haut au défilement */}
@@ -208,25 +229,6 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
               </button>
             ))}
           </div>
-
-          {/* Équipes : toujours visible à droite, ne défile pas avec les compétitions */}
-          <button
-            type="button"
-            onClick={() => setPickerOpen(true)}
-            aria-haspopup="dialog"
-            aria-label={selectedTeams.length > 0 ? `Équipes, ${selectedTeams.length} choisie(s)` : "Choisir des équipes"}
-            className={`chip relative mr-4 ${selectedTeams.length > 0 ? "chip-accent" : ""}`}
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
-              <path d="M4 6h16M7 12h10M10 18h4" />
-            </svg>
-            Équipes
-            {selectedTeams.length > 0 && (
-              <span className="-mr-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[12px] font-semibold text-accent">
-                {selectedTeams.length}
-              </span>
-            )}
-          </button>
         </div>
 
         {selectedTeams.length > 0 && (

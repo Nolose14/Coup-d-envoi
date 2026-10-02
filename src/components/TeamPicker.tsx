@@ -111,7 +111,7 @@ export function TeamPicker({
             Effacer
           </button>
           <h2 className="font-display text-[18px] font-medium">
-            Équipes{selected.length > 0 && <span className="text-label-3"> · {selected.length}</span>}
+            Mes équipes{selected.length > 0 && <span className="text-label-3"> · {selected.length}</span>}
           </h2>
           <button type="button" onClick={onClose} className="min-w-16 text-right text-[16px] font-semibold text-accent">
             OK

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 /** En-tête façon habillage TV : sur-titre, titre condensé, état de mise à jour. */
 export function PageHeader({
   title,
@@ -5,12 +7,15 @@ export function PageHeader({
   live = false,
   onRefresh,
   refreshing = false,
+  action,
 }: {
   title: string;
   status: string;
   live?: boolean;
   onRefresh?: () => void;
   refreshing?: boolean;
+  /** Bouton facultatif affiché à droite du titre (ex. « Équipes »). */
+  action?: ReactNode;
 }) {
   return (
     <header className="px-4 pb-1 pt-5">
@@ -18,7 +23,10 @@ export function PageHeader({
         <span className="h-3 w-1 rounded-sm bg-accent" aria-hidden />
         Coup d&apos;envoi
       </p>
-      <h1 className="font-display mt-1 text-[40px] font-semibold leading-none">{title}</h1>
+      <div className="mt-1 flex items-center justify-between gap-3">
+        <h1 className="font-display text-[40px] font-semibold leading-none">{title}</h1>
+        {action}
+      </div>
       <p className="mt-2 flex h-5 items-center gap-1.5 text-[13px] text-label-2" aria-live="polite">
         {live && <span className="live-dot h-1.5 w-1.5 rounded-full bg-live" aria-hidden />}
         {status}
