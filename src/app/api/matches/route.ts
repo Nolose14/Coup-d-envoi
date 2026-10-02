@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getMatches } from "@/lib/matches";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300; // le scan des sélections est volontairement ralenti
 
 export async function GET(req: NextRequest) {
   const section = req.nextUrl.searchParams.get("section") === "selections" ? "selections" : "clubs";

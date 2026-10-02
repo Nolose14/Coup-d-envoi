@@ -1,7 +1,9 @@
 /**
  * TheSportsDB — sélections nationales (API gratuite et ouverte, clé publique).
- * Limites de la clé gratuite : 100 matchs par saison et compétition,
- * + les 15 prochains matchs. Une partie des rencontres peut donc manquer :
+ * La clé gratuite renvoie un échantillon : on le complète en scannant jour par
+ * jour les fenêtres internationales repérées (± 3 jours autour des matchs connus).
+ * Les fenêtres lointaines apparaissent à mesure qu'elles approchent. Il peut
+ * rester des trous :
  * les matchs des Bleus sont garantis par la liste manuelle (matchs-selections.ts).
  */
 import { unstable_cache } from "next/cache";
@@ -14,9 +16,17 @@ import type { RawMatch } from "@/lib/types";
 const KEYS = [process.env.THESPORTSDB_KEY, "123", "3"].filter(Boolean) as string[];
 const BASE = "https://www.thesportsdb.com/api/v1/json";
 
+let lastCall = 0;
+async function throttle() {
+  const wait = lastCall + 2100 - Date.now(); // ~28 requêtes/minute maximum
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  lastCall = Date.now();
+}
+
 async function tsdb<T>(path: string): Promise<T | null> {
   let lastStatus = 0;
   for (const key of KEYS) {
+    await throttle();
     const res = await fetch(`${BASE}/${key}/${path}`, { cache: "no-store", headers: { Accept: "application/json" } });
     lastStatus = res.status;
     if (res.ok) {
@@ -76,11 +86,27 @@ function kickoffOf(e: TsdbEvent): { iso: string; confirmed: boolean } | null {
   return { iso: d.toISOString(), confirmed: !!time && !time.startsWith("00:00") };
 }
 
-function seasonsToTry(now: Date) {
+function seasonsToTry(now: Date, comp: InternationalCompetition) {
   const y = now.getUTCFullYear();
-  const m = now.getUTCMonth();
-  const start = m >= 6 ? y : y - 1;
-  return [`${start}-${start + 1}`, `${y}`, `${y + 1}`];
+  const start = now.getUTCMonth() >= 6 ? y : y - 1;
+  return comp.id === "FRIENDLY" ? [`${y}`] : [`${start}-${start + 1}`];
+}
+
+/** Jours à scanner un par un : autour de chaque date de match déjà connue (± 3 jours). */
+function daysAround(events: Iterable<TsdbEvent>, now: Date, limit: number, max: number) {
+  const days = new Set<string>();
+  const today = now.toISOString().slice(0, 10);
+  const sorted = [...events].map((e) => e.dateEvent).filter((d): d is string => !!d && d >= today).sort();
+  for (const d of sorted) {
+    const base = new Date(`${d}T12:00:00Z`);
+    for (let i = -3; i <= 3; i++) {
+      const day = addDays(base, i);
+      const key = day.toISOString().slice(0, 10);
+      if (key >= today && day.getTime() <= limit) days.add(key);
+    }
+    if (days.size >= max) break;
+  }
+  return [...days].sort().slice(0, max);
 }
 
 export async function fetchTsdbInternational(): Promise<{ matches: RawMatch[]; warnings: string[] }> {
@@ -98,8 +124,15 @@ export async function fetchTsdbInternational(): Promise<{ matches: RawMatch[]; w
       const events = new Map<string, TsdbEvent>();
       const next = await tsdb<{ events?: TsdbEvent[] | null }>(`eventsnextleague.php?id=${leagueId}`);
       for (const e of next?.events ?? []) events.set(e.idEvent, e);
-      for (const season of seasonsToTry(now)) {
+      for (const season of seasonsToTry(now, comp)) {
         const data = await tsdb<{ events?: TsdbEvent[] | null }>(`eventsseason.php?id=${leagueId}&s=${season}`);
+        for (const e of data?.events ?? []) events.set(e.idEvent, e);
+      }
+
+      // La clé gratuite ne renvoie qu'un échantillon : on complète en interrogeant
+      // chaque jour autour des dates de matchs repérées (fenêtres internationales).
+      for (const day of daysAround(events.values(), now, limit, 14)) {
+        const data = await tsdb<{ events?: TsdbEvent[] | null }>(`eventsday.php?d=${day}&l=${leagueId}`);
         for (const e of data?.events ?? []) events.set(e.idEvent, e);
       }
 

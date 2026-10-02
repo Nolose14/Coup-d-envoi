@@ -12,7 +12,7 @@ import { fetchClubMatches } from "@/lib/providers/football-data";
 import type { MatchesPayload, Section } from "@/lib/types";
 
 const getClubs = unstable_cache(fetchClubMatches, ["clubs-v1"], { revalidate: 3600, tags: ["matches"] });
-const getSelections = unstable_cache(fetchInternationalMatches, ["selections-v5"], { revalidate: 6 * 3600, tags: ["matches"] });
+const getSelections = unstable_cache(fetchInternationalMatches, ["selections-v6"], { revalidate: 6 * 3600, tags: ["matches"] });
 
 export async function getMatches(section: Section): Promise<MatchesPayload> {
   const result = section === "clubs" ? await getClubs() : await getSelections();
