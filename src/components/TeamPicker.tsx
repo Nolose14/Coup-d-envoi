@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TeamLogo } from "./TeamLogo";
 
@@ -85,7 +86,8 @@ export function TeamPicker({
     onClose();
   };
 
-  return (
+  // Affichée directement dans la page, au-dessus des onglets qui glissent
+  return createPortal(
     <div className="fixed inset-0 z-30" role="dialog" aria-modal="true" aria-label="Choisir mes équipes">
       {/* Voile sur toute la page, même derrière le clavier */}
       <button type="button" aria-label="Fermer" onClick={close} className="fade-in absolute inset-0 bg-black/60" />
@@ -212,6 +214,7 @@ export function TeamPicker({
         <div className="mx-auto mb-2 h-1.5 w-10 shrink-0 rounded-full bg-surface-2" aria-hidden />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

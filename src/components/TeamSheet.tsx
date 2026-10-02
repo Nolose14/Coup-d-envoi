@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect } from "react";
 import { zoneFor } from "@/config/classements";
 import type { StandingRow, StandingTable } from "@/lib/types";
@@ -54,7 +55,8 @@ export function TeamSheet({
   const leader = table.rows[0];
   const gap = leader && leader.team.name !== row.team.name ? leader.points - row.points : 0;
 
-  return (
+  // Affichée directement dans la page, au-dessus des onglets qui glissent
+  return createPortal(
     <div className="fixed inset-0 z-30" role="dialog" aria-modal="true" aria-label={`Fiche ${row.team.name}`}>
       <button type="button" aria-label="Fermer" onClick={onClose} className="absolute inset-0 bg-black/60" />
 
@@ -187,6 +189,7 @@ export function TeamSheet({
           </section>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

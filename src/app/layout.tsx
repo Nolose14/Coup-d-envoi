@@ -44,9 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr">
       <body className="font-sans">
-        <main className="mx-auto max-w-xl pb-[calc(84px+env(safe-area-inset-bottom))]">
-          <SwipeNav>{children}</SwipeNav>
-        </main>
+        <SwipeNav>{children}</SwipeNav>
         <TabBar />
         <ServiceWorkerRegister />
       </body>

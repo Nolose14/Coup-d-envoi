@@ -1,16 +1,7 @@
-import { MatchesView } from "@/components/MatchesView";
-
-export default function SelectionsPage() {
-  return (
-    <MatchesView
-      section="selections"
-      title="Sélections"
-      filters={[
-        { id: "all", label: "Tout" },
-        { id: "france", label: "Équipe de France" },
-        { id: "NL", label: "Ligue des nations" },
-        { id: "FRIENDLY", label: "Amicaux" },
-      ]}
-    />
-  );
+/**
+ * Le contenu de cet onglet est affiché par SwipeNav (dans layout.tsx), qui garde
+ * les 3 onglets côte à côte pour pouvoir passer de l'un à l'autre en glissant le doigt.
+ */
+export default function Page() {
+  return null;
 }

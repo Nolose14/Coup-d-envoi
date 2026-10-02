@@ -34,9 +34,10 @@ body {
 body {
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
-  /* Le contenu passe sous l'encoche : on le décale de la hauteur de la barre de statut */
-  padding-top: env(safe-area-inset-top, 0px);
-  min-height: 100dvh;
+  /* La page entière ne défile pas : chaque onglet a son propre défilement (voir SwipeNav),
+     avec le rebond élastique d'iOS en haut et en bas. */
+  height: 100dvh;
+  overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
 }
