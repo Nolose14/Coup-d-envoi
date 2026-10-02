@@ -1,10 +1,13 @@
 /**
- * PAGE DE TEST TEMPORAIRE : que donne vraiment Highlightly en gratuit ?
+ * PAGE DE TEST TEMPORAIRE (version 2) : que donne vraiment Highlightly en gratuit ?
  * Ouvre https://coup-d-envoi.vercel.app/api/test-stats
  *
- * Elle cherche un match terminé récent de Ligue 1 et de Ligue des champions,
- * puis demande sa composition et ses statistiques.
- * Environ 6 à 10 requêtes par ouverture (quota gratuit : 100 par jour).
+ * La version 1 a montré que la clé fonctionne, mais que la recherche par nom
+ * de championnat ne renvoyait aucun match. Cette version :
+ *  1. liste TOUS les matchs d'un samedi récent, pour voir les noms exacts des championnats ;
+ *  2. cherche les identifiants de la Ligue 1 et de la Ligue des champions ;
+ *  3. demande la composition et les statistiques d'un match terminé de chacune.
+ * Environ 10 requêtes par ouverture (quota gratuit : 100 par jour).
  * Le résultat est gardé 1 h : recharger la page ne consomme rien de plus.
  * La clé reste sur le serveur (variable HIGHLIGHTLY_KEY dans Vercel), elle n'est jamais affichée.
  */
@@ -13,101 +16,120 @@ import { unstable_cache } from "next/cache";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const BASES = ["https://soccer.highlightly.net", "https://sports.highlightly.net/football"];
+const BASE = "https://soccer.highlightly.net";
 
-type Call = { url: string; status: number; restant: string | null; json: unknown; erreur?: string };
+type Call = { status: number; restant: string | null; json: unknown; erreur?: string };
 
-async function call(base: string, path: string): Promise<Call> {
-  const url = `${base}${path}`;
+async function call(path: string): Promise<Call> {
   try {
-    const res = await fetch(url, {
+    const res = await fetch(`${BASE}${path}`, {
       headers: { "x-rapidapi-key": process.env.HIGHLIGHTLY_KEY ?? "" },
       cache: "no-store",
     });
     const text = await res.text();
     let json: unknown = text.slice(0, 500);
     try { json = JSON.parse(text); } catch { /* réponse non JSON */ }
-    return { url, status: res.status, restant: res.headers.get("x-ratelimit-requests-remaining"), json };
+    return { status: res.status, restant: res.headers.get("x-ratelimit-requests-remaining"), json };
   } catch (e) {
-    return { url, status: 0, restant: null, json: null, erreur: (e as Error).message };
+    return { status: 0, restant: null, json: null, erreur: (e as Error).message };
   }
 }
 
-/** Aperçu court d'une réponse, pour ne pas afficher des pages entières. */
-function apercu(value: unknown, max = 1200): string {
-  const s = JSON.stringify(value, null, 1) ?? "";
+function apercu(value: unknown, max = 1500): string {
+  const s = JSON.stringify(value) ?? "";
   return s.length > max ? `${s.slice(0, max)} …(coupé)` : s;
 }
 
-function dateISO(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
+const dateISO = (d: Date) => d.toISOString().slice(0, 10);
 
-/** Les derniers jours où cette compétition a joué (jours de la semaine donnés, 0 = dimanche). */
-function derniersJours(jours: number[], combien: number) {
-  const out: string[] = [];
+/** Dernier jour passé correspondant à l'un des jours donnés (0 = dimanche, 6 = samedi). */
+function dernierJour(jours: number[]) {
   const d = new Date();
-  d.setUTCDate(d.getUTCDate() - 1);
-  for (let i = 0; i < 21 && out.length < combien; i++) {
-    if (jours.includes(d.getUTCDay())) out.push(dateISO(d));
+  for (let i = 1; i < 15; i++) {
     d.setUTCDate(d.getUTCDate() - 1);
+    if (jours.includes(d.getUTCDay())) return dateISO(d);
   }
-  return out;
+  return dateISO(d);
 }
 
-interface MatchLite {
-  id: number;
-  homeTeam?: { name?: string };
-  awayTeam?: { name?: string };
-  league?: { name?: string };
-  country?: { name?: string };
-  state?: { description?: string; score?: { current?: string } };
-}
+interface Obj { [k: string]: unknown }
+const liste = (j: unknown): Obj[] => (Array.isArray(j) ? j : Array.isArray((j as Obj)?.data) ? ((j as Obj).data as Obj[]) : []) as Obj[];
+const str = (v: unknown) => (typeof v === "string" || typeof v === "number" ? String(v) : "");
+const nomLigue = (m: Obj) => str((m.league as Obj)?.name);
+const pays = (m: Obj) => `${str((m.country as Obj)?.name)} ${str((m.country as Obj)?.code)}`.trim();
+const etat = (m: Obj) => str((m.state as Obj)?.description);
+const termine = (m: Obj) => /finish|ended|full|after|terminé/i.test(etat(m));
 
-async function tester(base: string, leagueName: string, countryCode: string | null, dates: string[]) {
-  const journal: Record<string, unknown>[] = [];
-  let match: MatchLite | null = null;
-
-  for (const date of dates) {
-    const q = new URLSearchParams({ date, leagueName, limit: "50" });
-    if (countryCode) q.set("countryCode", countryCode);
-    const r = await call(base, `/matches?${q}`);
-    const data = ((r.json as { data?: MatchLite[] })?.data ?? []) as MatchLite[];
-    journal.push({ etape: `Matchs du ${date}`, statut: r.status, requetesRestantes: r.restant, nombre: data.length, erreur: r.erreur ?? (r.status >= 400 ? apercu(r.json, 300) : undefined) });
-    if (r.status === 401 || r.status === 403) break;
-    match = data.find((m) => /finish|ended|full|terminé/i.test(m.state?.description ?? "")) ?? data[0] ?? null;
-    if (match) break;
-  }
-
-  if (!match) return { trouve: false, journal };
-
-  const lineups = await call(base, `/lineups/${match.id}`);
-  const stats = await call(base, `/statistics/${match.id}`);
-
+async function detailsMatch(m: Obj) {
+  const lineups = await call(`/lineups/${str(m.id)}`);
+  const stats = await call(`/statistics/${str(m.id)}`);
   return {
-    trouve: true,
-    match: `${match.homeTeam?.name} – ${match.awayTeam?.name} (${match.state?.score?.current ?? "?"}, ${match.state?.description ?? "?"}) — ${match.league?.name ?? ""} ${match.country?.name ?? ""}`,
-    idHighlightly: match.id,
-    journal,
+    match: `${str((m.homeTeam as Obj)?.name)} – ${str((m.awayTeam as Obj)?.name)} (${str(((m.state as Obj)?.score as Obj)?.current) || "?"}, ${etat(m) || "?"})`,
+    idHighlightly: str(m.id),
     composition: { statut: lineups.status, requetesRestantes: lineups.restant, apercu: apercu(lineups.json) },
     statistiques: { statut: stats.status, requetesRestantes: stats.restant, apercu: apercu(stats.json) },
   };
 }
 
+async function chercherLigue(nom: string, paysVoulu: RegExp) {
+  const r = await call(`/leagues?${new URLSearchParams({ leagueName: nom, limit: "20" })}`);
+  const ligues = liste(r.json).map((l) => ({ id: str(l.id), nom: str(l.name), pays: pays(l) }));
+  const choisie = ligues.find((l) => paysVoulu.test(`${l.nom} ${l.pays}`)) ?? ligues[0] ?? null;
+  return { statut: r.status, requetesRestantes: r.restant, ligues: ligues.slice(0, 10), choisie, brut: ligues.length ? undefined : apercu(r.json, 600) };
+}
+
+async function matchsDeLigue(leagueId: string, dates: string[]) {
+  const journal: Obj[] = [];
+  for (const date of dates) {
+    const r = await call(`/matches?${new URLSearchParams({ leagueId, date, limit: "50" })}`);
+    const data = liste(r.json);
+    journal.push({ date, statut: r.status, requetesRestantes: r.restant, nombre: data.length, plan: (r.json as Obj)?.plan });
+    const m = data.find(termine) ?? data[0];
+    if (m) return { journal, match: m };
+  }
+  return { journal, match: null as Obj | null };
+}
+
 const run = unstable_cache(
   async () => {
-    // On essaie d'abord l'adresse « Football API », puis l'adresse « Sport API » si la première refuse.
-    let base = BASES[0];
-    let ligue1 = await tester(base, "Ligue 1", "FR", derniersJours([6, 0], 2));
-    const refuse = !ligue1.trouve && ligue1.journal.some((j) => [401, 403, 404].includes(j.statut as number));
-    if (refuse) {
-      base = BASES[1];
-      ligue1 = await tester(base, "Ligue 1", "FR", derniersJours([6, 0], 2));
-    }
-    const ldc = await tester(base, "UEFA Champions League", null, derniersJours([2, 3], 2));
-    return { adresseUtilisee: base, testeLe: new Date().toISOString(), ligue1, ldc };
+    const samedi = dernierJour([6]);
+    const dimanche = dernierJour([0]);
+    const mercredi = dernierJour([3]);
+    const mardi = dernierJour([2]);
+
+    // 1. Tous les matchs d'un samedi : quels championnats Highlightly renvoie-t-il en gratuit ?
+    const tous = await call(`/matches?${new URLSearchParams({ date: samedi, limit: "100" })}`);
+    const data = liste(tous.json);
+    const ligues = [...new Set(data.map((m) => `${nomLigue(m)} (${pays(m)})`))];
+    const exemple = data[0];
+
+    // 2. Identifiants des championnats
+    const l1 = await chercherLigue("Ligue 1", /france|\bFR\b/i);
+    const cl = await chercherLigue("Champions League", /uefa|europe|world/i);
+
+    // 3. Un match terminé de chacun, avec composition et statistiques
+    const l1Match = l1.choisie ? await matchsDeLigue(l1.choisie.id, [samedi, dimanche]) : null;
+    const clMatch = cl.choisie ? await matchsDeLigue(cl.choisie.id, [mercredi, mardi]) : null;
+
+    return {
+      testeLe: new Date().toISOString(),
+      etape1_tousLesMatchsDuSamedi: {
+        date: samedi,
+        statut: tous.status,
+        requetesRestantes: tous.restant,
+        nombreRecu: data.length,
+        totalAnnonce: ((tous.json as Obj)?.pagination as Obj)?.totalCount,
+        messageOffreGratuite: (tous.json as Obj)?.plan,
+        championnatsPresents: ligues.slice(0, 60),
+        exempleDeMatch: exemple ? apercu(exemple, 1200) : apercu(tous.json, 600),
+      },
+      etape2_ligue1: l1,
+      etape2_ldc: cl,
+      etape3_ligue1: l1Match && { journal: l1Match.journal, ...(l1Match.match ? await detailsMatch(l1Match.match) : { trouve: false }) },
+      etape3_ldc: clMatch && { journal: clMatch.journal, ...(clMatch.match ? await detailsMatch(clMatch.match) : { trouve: false }) },
+    };
   },
-  ["test-stats-v1"],
+  ["test-stats-v2"],
   { revalidate: 3600 },
 );
 
