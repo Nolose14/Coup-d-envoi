@@ -35,7 +35,7 @@ function useVisibleArea(active: boolean) {
   return area;
 }
 
-/** Feuille qui monte du bas de l'écran, comme dans les apps iOS. */
+/** Panneau qui descend du haut de l'écran, sous le bouton « Mes équipes » : le pouce reste au même endroit. */
 export function TeamPicker({
   open,
   teams,
@@ -80,28 +80,31 @@ export function TeamPicker({
 
   const keyboard = area?.keyboard ?? false;
 
+  const close = () => {
+    inputRef.current?.blur();
+    onClose();
+  };
+
   return (
-    <div
-      className="fixed inset-x-0 top-0 z-30"
-      style={{ top: area?.top ?? 0, height: area ? area.height : "100dvh" }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Choisir des équipes"
-    >
-      <button type="button" aria-label="Fermer" onClick={onClose} className="absolute inset-0 bg-black/60" />
+    <div className="fixed inset-0 z-30" role="dialog" aria-modal="true" aria-label="Choisir mes équipes">
+      {/* Voile sur toute la page, même derrière le clavier */}
+      <button type="button" aria-label="Fermer" onClick={close} className="fade-in absolute inset-0 bg-black/60" />
 
+      {/* Zone visible (au-dessus du clavier) : le panneau descend du haut, sous le bouton */}
       <div
-        className="sheet-up absolute inset-x-0 bottom-0 mx-auto flex max-w-xl flex-col rounded-t-3xl bg-surface"
-        style={{
-          // Clavier ouvert : la feuille prend toute la hauteur libre au-dessus du clavier
-          height: keyboard ? "calc(100% - 8px)" : undefined,
-          maxHeight: keyboard ? undefined : "calc(100% - env(safe-area-inset-top) - 24px)",
-          paddingBottom: keyboard ? 0 : "env(safe-area-inset-bottom)",
-        }}
+        className="pointer-events-none absolute inset-x-0"
+        style={{ top: area?.top ?? 0, height: area ? area.height : "100dvh" }}
       >
-        <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-surface-2" />
-
-        <header className="flex shrink-0 items-center justify-between px-4 pb-2 pt-3">
+        <div
+          className="sheet-down pointer-events-auto mx-auto flex max-w-xl flex-col rounded-b-3xl bg-surface shadow-[0_12px_40px_rgb(0_0_0/0.5)]"
+          style={{
+            paddingTop: "env(safe-area-inset-top)",
+            // Clavier ouvert : le panneau occupe tout l'espace jusqu'au clavier
+            height: keyboard ? "100%" : undefined,
+            maxHeight: keyboard ? undefined : "75%",
+          }}
+        >
+        <header className="flex shrink-0 items-center justify-between px-4 pb-2 pt-4">
           <button
             type="button"
             onClick={() => onChange([])}
@@ -113,7 +116,7 @@ export function TeamPicker({
           <h2 className="font-display text-[18px] font-medium">
             Mes équipes{selected.length > 0 && <span className="text-label-3"> · {selected.length}</span>}
           </h2>
-          <button type="button" onClick={onClose} className="min-w-16 text-right text-[16px] font-semibold text-accent">
+          <button type="button" onClick={close} className="min-w-16 text-right text-[16px] font-semibold text-accent">
             OK
           </button>
         </header>
@@ -167,7 +170,7 @@ export function TeamPicker({
           )}
         </div>
 
-        <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-3">
+        <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2">
           {visible.length === 0 && (
             <li className="px-6 py-8 text-center text-[15px] text-label-2">
               Aucune équipe ne correspond. Seules les équipes qui ont un match à venir dans l&apos;app sont proposées.
@@ -205,6 +208,9 @@ export function TeamPicker({
             );
           })}
         </ul>
+
+        <div className="mx-auto mb-2 h-1.5 w-10 shrink-0 rounded-full bg-surface-2" aria-hidden />
+        </div>
       </div>
     </div>
   );

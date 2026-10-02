@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ZONES, zoneFor } from "@/config/classements";
-import { relativeUpdate } from "@/lib/dates";
 import { readFavorites, writeFavorites } from "@/lib/favorites";
 import type { CompetitionId, StandingRow, StandingsPayload } from "@/lib/types";
 import { FormDots } from "./FormDots";
@@ -82,7 +81,7 @@ export function StandingsView() {
 
   return (
     <div>
-      <PageHeader title="Classements" onRefresh={load} refreshing={loading} status={loading && !data ? "Chargement…" : data ? relativeUpdate(data.updatedAt) : ""} />
+      <PageHeader title="Classements" onRefresh={load} refreshing={loading} />
 
       {/* Choix de la compétition + affichage, collés en haut */}
       <div className="sticky z-10 border-b border-separator bg-bg/90 backdrop-blur-xl" style={{ top: "env(safe-area-inset-top)" }}>

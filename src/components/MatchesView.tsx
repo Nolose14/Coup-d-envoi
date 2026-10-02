@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { dayLabel, groupByDay, relativeUpdate } from "@/lib/dates";
+import { dayLabel, groupByDay } from "@/lib/dates";
 import { DayHeader } from "./DayHeader";
 import { PageHeader } from "./PageHeader";
 import type { MatchesPayload, Section } from "@/lib/types";
@@ -87,7 +87,7 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
-    const timer = setInterval(() => setTick((t) => t + 1), 60_000); // met à jour "il y a X min"
+    const timer = setInterval(() => setTick((t) => t + 1), 60_000); // retire les matchs terminés au fil du temps
     return () => {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", onOnline);
@@ -174,11 +174,6 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
         title={title}
         onRefresh={load}
         refreshing={loading}
-        status={loading && !data ? "Chargement…" : data ? relativeUpdate(data.updatedAt) : ""}
-        live={upcoming.some((m) => {
-          const t = new Date(m.kickoff).getTime();
-          return Date.now() >= t && Date.now() < t + 2 * 3600_000;
-        })}
         action={
           <button
             type="button"
