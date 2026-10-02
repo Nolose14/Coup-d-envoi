@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ZONES, zoneFor } from "@/config/classements";
 import { readFavorites, writeFavorites } from "@/lib/favorites";
 import type { CompetitionId, StandingRow, StandingsPayload } from "@/lib/types";
@@ -8,6 +8,7 @@ import { FormDots } from "./FormDots";
 import { PageHeader } from "./PageHeader";
 import { TeamLogo } from "./TeamLogo";
 import { TeamSheet } from "./TeamSheet";
+import { useSwipeTabs } from "@/lib/useSwipeTabs";
 
 const CACHE_KEY = "coup-d-envoi:classements";
 const COMP_KEY = "coup-d-envoi:classements:competition";
@@ -66,6 +67,24 @@ export function StandingsView() {
   );
   const table = tables.find((t) => t.competition === competition) ?? tables[0] ?? null;
 
+  const swipeRef = useSwipeTabs(
+    tables.map((t) => t.competition),
+    table?.competition,
+    chooseCompetition,
+  );
+
+  // Garde le championnat choisi visible dans la barre (utile après un balayage)
+  const chipsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const row = chipsRef.current;
+    const chip = row?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (!row || !chip) return;
+    const left = chip.offsetLeft - 16;
+    const right = chip.offsetLeft + chip.offsetWidth + 16 - row.clientWidth;
+    if (row.scrollLeft > left) row.scrollTo({ left, behavior: "smooth" });
+    else if (row.scrollLeft < right) row.scrollTo({ left: right, behavior: "smooth" });
+  }, [table?.competition]);
+
   const toggleFollow = () => {
     if (!selected) return;
     const name = selected.team.name;
@@ -84,8 +103,8 @@ export function StandingsView() {
       <PageHeader title="Classements" onRefresh={load} refreshing={loading} />
 
       {/* Choix de la compétition + affichage, collés en haut */}
-      <div className="sticky z-10 border-b border-separator bg-bg/90 backdrop-blur-xl" style={{ top: "env(safe-area-inset-top)" }}>
-        <div className="flex gap-2 overflow-x-auto px-4 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div data-filter-bar className="sticky z-10 border-b border-separator bg-bg/90 backdrop-blur-xl" style={{ top: "env(safe-area-inset-top)" }}>
+        <div ref={chipsRef} className="flex gap-2 overflow-x-auto px-4 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {tables.map((t) => (
             <button
               key={t.competition}
@@ -119,6 +138,8 @@ export function StandingsView() {
         </div>
       </div>
 
+      {/* Zone de balayage : glisser à gauche ou à droite change de championnat */}
+      <div ref={swipeRef} style={{ minHeight: "60dvh", touchAction: "pan-y" }}>
       {error && (
         <div className="mx-4 mb-2 rounded-xl bg-surface px-3.5 py-2.5 text-[13px] text-label-2">
           {error}
@@ -249,6 +270,7 @@ export function StandingsView() {
           </p>
         </section>
       )}
+      </div>
 
       <TeamSheet
         row={selected}

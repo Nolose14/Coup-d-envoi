@@ -27,9 +27,8 @@ html,
 body {
   background: var(--color-bg);
   color: var(--color-label);
-  /* Bloque la page en haut et en bas : pas de rebond élastique, comme une app native */
-  overscroll-behavior: none;
-  overscroll-behavior-y: none;
+  /* Rebond élastique d'iOS autorisé en haut et en bas, comme une app native.
+     Le fond reste bleu nuit pendant le rebond. */
 }
 
 body {

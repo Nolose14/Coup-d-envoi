@@ -8,6 +8,7 @@ import type { MatchesPayload, Section } from "@/lib/types";
 import { MatchCard } from "./MatchCard";
 import { TeamLogo } from "./TeamLogo";
 import { TeamPicker, type TeamOption } from "./TeamPicker";
+import { useSwipeTabs } from "@/lib/useSwipeTabs";
 
 interface Filter { id: string; label: string }
 
@@ -114,6 +115,12 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
   );
   const activeFilter = availableFilters.some((f) => f.id === filter) ? filter : "all";
 
+  const swipeRef = useSwipeTabs(
+    availableFilters.map((f) => f.id),
+    activeFilter,
+    setFilter,
+  );
+
   // Garde la compétition choisie visible dans la barre (utile pour celles tout à droite)
   const chipsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -199,6 +206,7 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
 
       {/* Filtres, collés en haut au défilement */}
       <div
+        data-filter-bar
         className="sticky z-10 border-b border-separator bg-bg/90 backdrop-blur-xl"
         style={{ top: "env(safe-area-inset-top)" }}
       >
@@ -247,6 +255,8 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
         )}
       </div>
 
+      {/* Zone de balayage : glisser à gauche ou à droite change de compétition */}
+      <div ref={swipeRef} style={{ minHeight: "60dvh", touchAction: "pan-y" }}>
       {(offline || error) && (
         <div className="mx-4 mt-3 rounded-xl bg-surface px-3.5 py-2.5 text-[13px] text-label-2">
           {offline ? "Hors connexion. Ce sont les derniers matchs enregistrés." : error}
@@ -310,6 +320,8 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
           </section>
         ))}
       </div>
+      </div>
+
       <TeamPicker
         open={pickerOpen}
         teams={teamOptions}
