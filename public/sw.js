@@ -3,7 +3,7 @@
  * matchs même sans réseau (métro, avion, RER sans 4G…).
  * Change VERSION pour forcer une mise à jour des fichiers en cache.
  */
-const VERSION = "v2";
+const VERSION = "v3"; // v3 : nouveau logo
 const SHELL = `shell-${VERSION}`;
 const DATA = `data-${VERSION}`;
 const IMAGES = `images-${VERSION}`;
