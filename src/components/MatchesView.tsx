@@ -5,10 +5,13 @@ import { dayLabel, groupByDay, relativeUpdate } from "@/lib/dates";
 import type { MatchesPayload, Section } from "@/lib/types";
 import { MatchCard } from "./MatchCard";
 import { PullToRefresh } from "./PullToRefresh";
+import { TeamLogo } from "./TeamLogo";
+import { TeamPicker, type TeamOption } from "./TeamPicker";
 
 interface Filter { id: string; label: string }
 
 const storageKey = (section: Section) => `coup-d-envoi:${section}`;
+const teamsKey = (section: Section) => `coup-d-envoi:equipes:${section}`;
 const STALE_AFTER_MS = 5 * 60 * 1000;
 
 function readCache(section: Section): MatchesPayload | null {
@@ -26,6 +29,8 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
   const [error, setError] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
   const [filter, setFilter] = useState("all");
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [, setTick] = useState(0);
   const lastFetch = useRef(0);
 
@@ -54,6 +59,22 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
     setOffline(!navigator.onLine);
     load();
   }, [section, load]);
+
+  // Équipes choisies : gardées sur l'appareil, séparément pour Clubs et Sélections
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(teamsKey(section));
+      if (raw) setSelectedTeams(JSON.parse(raw) as string[]);
+    } catch { /* ignoré */ }
+  }, [section]);
+
+  const updateTeams = useCallback(
+    (next: string[]) => {
+      setSelectedTeams(next);
+      try { localStorage.setItem(teamsKey(section), JSON.stringify(next)); } catch { /* ignoré */ }
+    },
+    [section],
+  );
 
   // Rafraîchit quand on rouvre l'app, et suit l'état de la connexion
   useEffect(() => {
@@ -92,15 +113,41 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
   );
   const activeFilter = availableFilters.some((f) => f.id === filter) ? filter : "all";
 
+  // Liste des équipes présentes dans les prochains matchs, triée par nom
+  const teamOptions = useMemo<TeamOption[]>(() => {
+    const map = new Map<string, TeamOption>();
+    for (const m of upcoming) {
+      for (const t of [m.home, m.away]) {
+        if (t.name === "À déterminer") continue;
+        const entry = map.get(t.name) ?? { name: t.name, logo: t.logo, count: 0 };
+        entry.count++;
+        entry.logo ??= t.logo;
+        map.set(t.name, entry);
+      }
+    }
+    // Les équipes choisies restent visibles même sans match à venir
+    for (const name of selectedTeams) if (!map.has(name)) map.set(name, { name, logo: null, count: 0 });
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  }, [upcoming, selectedTeams]);
+
+  const teamLogo = (name: string) => teamOptions.find((t) => t.name === name)?.logo ?? null;
+
   const days = useMemo(
-    () => groupByDay(upcoming.filter((m) => matchesFilter(m, activeFilter))),
-    [upcoming, activeFilter],
+    () =>
+      groupByDay(
+        upcoming.filter(
+          (m) =>
+            matchesFilter(m, activeFilter) &&
+            (selectedTeams.length === 0 || selectedTeams.includes(m.home.name) || selectedTeams.includes(m.away.name)),
+        ),
+      ),
+    [upcoming, activeFilter, selectedTeams],
   );
 
   let cardIndex = 0;
 
   return (
-    <PullToRefresh onRefresh={load}>
+    <PullToRefresh onRefresh={load} disabled={pickerOpen}>
       <header className="px-4 pt-4">
         <h1 className="text-[34px] font-bold leading-tight tracking-tight">{title}</h1>
         <p className="mt-0.5 h-5 text-[13px] text-label-2" aria-live="polite">
@@ -114,6 +161,20 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
         style={{ top: "env(safe-area-inset-top)" }}
       >
         <div className="flex gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            aria-haspopup="dialog"
+            className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-medium transition-colors active:opacity-70 ${
+              selectedTeams.length > 0 ? "bg-accent text-white" : "bg-surface text-label"
+            }`}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
+              <path d="M4 6h16M7 12h10M10 18h4" />
+            </svg>
+            Équipes{selectedTeams.length > 0 && ` (${selectedTeams.length})`}
+          </button>
+          <span className="my-1.5 w-px shrink-0 bg-separator" aria-hidden />
           {availableFilters.map((f) => (
             <button
               key={f.id}
@@ -128,6 +189,26 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
             </button>
           ))}
         </div>
+
+        {selectedTeams.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {selectedTeams.map((name) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => updateTeams(selectedTeams.filter((n) => n !== name))}
+                aria-label={`Retirer ${name}`}
+                className="flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-surface py-1 pl-1.5 pr-2.5 text-[13px] font-medium active:opacity-70"
+              >
+                <TeamLogo src={teamLogo(name)} name={name} small />
+                {name}
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-label-2" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" aria-hidden>
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {(offline || error) && (
@@ -160,9 +241,11 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
         <div className="px-8 pt-16 text-center">
           <p className="text-[17px] font-semibold">Aucun match à venir</p>
           <p className="mt-1 text-[15px] text-label-2">
-            {activeFilter === "all"
-              ? "Le calendrier n'est pas encore publié. Tire vers le bas pour actualiser."
-              : "Rien de prévu pour ce filtre. Essaie « Tout »."}
+            {selectedTeams.length > 0
+              ? "Pas de match prévu pour les équipes choisies avec ce filtre."
+              : activeFilter === "all"
+                ? "Le calendrier n'est pas encore publié. Tire vers le bas pour actualiser."
+                : "Rien de prévu pour ce filtre. Essaie « Tout »."}
           </p>
         </div>
       )}
@@ -179,6 +262,13 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
           </section>
         ))}
       </div>
+      <TeamPicker
+        open={pickerOpen}
+        teams={teamOptions}
+        selected={selectedTeams}
+        onChange={updateTeams}
+        onClose={() => setPickerOpen(false)}
+      />
     </PullToRefresh>
   );
 }

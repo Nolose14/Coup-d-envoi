@@ -6,7 +6,15 @@ const THRESHOLD = 72; // distance à tirer pour déclencher
 const MAX = 110;
 
 /** Tirer vers le bas pour actualiser, comme dans les apps iOS (absent en mode PWA). */
-export function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promise<void>; children: ReactNode }) {
+export function PullToRefresh({
+  onRefresh,
+  disabled = false,
+  children,
+}: {
+  onRefresh: () => Promise<void>;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
   const [pull, setPull] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -15,10 +23,12 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promis
   const refreshRef = useRef(onRefresh);
   refreshRef.current = onRefresh;
   const busy = useRef(false);
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
 
   useEffect(() => {
     const onStart = (e: TouchEvent) => {
-      if (window.scrollY <= 0 && !busy.current) {
+      if (window.scrollY <= 0 && !busy.current && !disabledRef.current) {
         startY.current = e.touches[0].clientY;
         setDragging(true);
       }
