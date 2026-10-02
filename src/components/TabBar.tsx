@@ -40,7 +40,7 @@ export function TabBar() {
   return (
     <nav
       aria-label="Sections"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-separator bg-surface/80 backdrop-blur-xl"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-separator bg-bg/92 backdrop-blur-xl"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul className="mx-auto flex max-w-xl">
@@ -52,10 +52,11 @@ export function TabBar() {
                 href={tab.href}
                 replace
                 aria-current={active ? "page" : undefined}
-                className={`flex h-[50px] flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors active:opacity-60 ${
-                  active ? "text-accent" : "text-label-2"
+                className={`relative flex h-[54px] flex-col items-center justify-center gap-1 transition-colors active:opacity-60 ${
+                  active ? "text-label" : "text-label-3"
                 }`}
               >
+                {active && <span className="absolute inset-x-6 top-0 h-[3px] rounded-b bg-accent" aria-hidden />}
                 <svg
                   viewBox="0 0 24 24"
                   className="h-6 w-6"
@@ -69,7 +70,7 @@ export function TabBar() {
                 >
                   {tab.icon}
                 </svg>
-                {tab.label}
+                <span className="font-display text-[11px] font-medium tracking-[0.06em]">{tab.label}</span>
               </Link>
             </li>
           );

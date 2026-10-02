@@ -69,7 +69,7 @@ export function TeamPicker({
           >
             Effacer
           </button>
-          <h2 className="text-[17px] font-semibold">Équipes</h2>
+          <h2 className="font-display text-[18px] font-medium">Équipes</h2>
           <button type="button" onClick={onClose} className="min-w-16 text-right text-[16px] font-semibold text-accent">
             OK
           </button>

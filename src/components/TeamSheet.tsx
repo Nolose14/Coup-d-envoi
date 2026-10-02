@@ -12,9 +12,9 @@ const RESULT_WORD = { V: "Victoire", N: "Nul", D: "Défaite" } as const;
 
 function Stat({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="rounded-2xl bg-surface-2 px-3 py-2.5">
+    <div className="rounded-xl bg-surface-2 px-3 py-2.5">
       <p className="text-[12px] text-label-2">{label}</p>
-      <p className="mt-0.5 text-[22px] font-bold leading-tight tabular-nums">{value}</p>
+      <p className="font-display mt-0.5 text-[24px] font-semibold leading-tight tabular-nums">{value}</p>
       {sub && <p className="text-[11px] text-label-3">{sub}</p>}
     </div>
   );
@@ -73,11 +73,11 @@ export function TeamSheet({
         <div className="overflow-y-auto overscroll-contain px-4 pb-6">
           {/* En-tête */}
           <header className="flex items-center gap-4">
-            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-surface-2">
+            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-surface-2">
               <TeamLogo src={row.team.logo} name={row.team.name} size="lg" />
             </span>
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-[24px] font-bold leading-tight tracking-tight">{row.team.name}</h2>
+              <h2 className="font-display truncate text-[26px] font-semibold leading-tight">{row.team.name}</h2>
               <p className="text-[14px] text-label-2">
                 {row.position}
                 <sup>{row.position === 1 ? "er" : "e"}</sup> de {table.name}
@@ -121,7 +121,7 @@ export function TeamSheet({
             </div>
 
             {/* Bilan victoires / nuls / défaites */}
-            <div className="mt-3 rounded-2xl bg-surface-2 px-3 py-3">
+            <div className="mt-3 rounded-xl bg-surface-2 px-3 py-3">
               <div className="flex h-2.5 overflow-hidden rounded-full bg-surface">
                 <span style={{ width: pct(row.won), backgroundColor: RESULT_COLORS.V }} />
                 <span style={{ width: pct(row.draw), backgroundColor: RESULT_COLORS.N }} />
@@ -138,15 +138,15 @@ export function TeamSheet({
           {/* Derniers matchs */}
           <section className="mt-6">
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-[17px] font-bold">Derniers matchs</h3>
+              <h3 className="font-display text-[17px] font-medium">Derniers matchs</h3>
               <FormDots form={row.form} />
             </div>
             {row.recent.length === 0 ? (
-              <p className="rounded-2xl bg-surface-2 px-3 py-4 text-center text-[14px] text-label-2">
+              <p className="rounded-xl bg-surface-2 px-3 py-4 text-center text-[14px] text-label-2">
                 Pas encore de résultat cette saison.
               </p>
             ) : (
-              <ul className="overflow-hidden rounded-2xl bg-surface-2">
+              <ul className="overflow-hidden rounded-xl bg-surface-2">
                 {row.recent.map((r, i) => (
                   <li key={i} className="flex items-center gap-3 border-b border-separator px-3 py-2.5 last:border-b-0">
                     <span
@@ -176,11 +176,11 @@ export function TeamSheet({
 
           {/* Prochain match */}
           <section className="mt-6">
-            <h3 className="mb-2 text-[17px] font-bold">Prochain match</h3>
+            <h3 className="font-display mb-2 text-[17px] font-medium">Prochain match</h3>
             {row.nextMatch ? (
               <MatchCard match={row.nextMatch} index={0} />
             ) : (
-              <p className="rounded-2xl bg-surface-2 px-3 py-4 text-center text-[14px] text-label-2">
+              <p className="rounded-xl bg-surface-2 px-3 py-4 text-center text-[14px] text-label-2">
                 Aucun match prévu dans les 30 prochains jours.
               </p>
             )}

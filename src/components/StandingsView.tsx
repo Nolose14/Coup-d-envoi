@@ -6,7 +6,7 @@ import { relativeUpdate } from "@/lib/dates";
 import { readFavorites, writeFavorites } from "@/lib/favorites";
 import type { CompetitionId, StandingRow, StandingsPayload } from "@/lib/types";
 import { FormDots } from "./FormDots";
-import { PullToRefresh } from "./PullToRefresh";
+import { PageHeader } from "./PageHeader";
 import { TeamLogo } from "./TeamLogo";
 import { TeamSheet } from "./TeamSheet";
 
@@ -81,16 +81,11 @@ export function StandingsView() {
     : "grid-cols-[30px_minmax(0,1fr)_24px_24px_24px_52px_34px]";
 
   return (
-    <PullToRefresh onRefresh={load} disabled={!!selected}>
-      <header className="px-4 pt-4">
-        <h1 className="text-[34px] font-bold leading-tight tracking-tight">Classements</h1>
-        <p className="mt-0.5 h-5 text-[13px] text-label-2" aria-live="polite">
-          {loading && !data ? "Chargement…" : data ? relativeUpdate(data.updatedAt) : ""}
-        </p>
-      </header>
+    <div>
+      <PageHeader title="Classements" onRefresh={load} refreshing={loading} status={loading && !data ? "Chargement…" : data ? relativeUpdate(data.updatedAt) : ""} />
 
       {/* Choix de la compétition + affichage, collés en haut */}
-      <div className="sticky z-10 bg-bg/85 backdrop-blur-xl" style={{ top: "env(safe-area-inset-top)" }}>
+      <div className="sticky z-10 border-b border-separator bg-bg/90 backdrop-blur-xl" style={{ top: "env(safe-area-inset-top)" }}>
         <div className="flex gap-2 overflow-x-auto px-4 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {tables.map((t) => (
             <button
@@ -98,9 +93,7 @@ export function StandingsView() {
               type="button"
               onClick={() => chooseCompetition(t.competition)}
               aria-pressed={table?.competition === t.competition}
-              className={`h-8 shrink-0 rounded-full px-3.5 text-[14px] font-medium transition-colors active:opacity-70 ${
-                table?.competition === t.competition ? "bg-label text-bg" : "bg-surface text-label"
-              }`}
+              className="chip"
             >
               {SHORT[t.competition] ?? t.name}
             </button>
@@ -116,8 +109,8 @@ export function StandingsView() {
                 role="tab"
                 aria-selected={mode === m}
                 onClick={() => setMode(m)}
-                className={`h-7 rounded-md text-[13px] font-semibold transition-colors ${
-                  mode === m ? "bg-surface-2 text-label shadow" : "text-label-2"
+                className={`font-display h-7 rounded-md text-[13px] font-medium transition-colors ${
+                  mode === m ? "bg-surface-3 text-label" : "text-label-3"
                 }`}
               >
                 {m === "forme" ? "Forme" : "Détails"}
@@ -161,7 +154,7 @@ export function StandingsView() {
               key={r.team.name}
               type="button"
               onClick={() => setSelected(r)}
-              className="flex shrink-0 items-center gap-2 rounded-2xl bg-surface py-2 pl-2 pr-3 active:opacity-70"
+              className="flex shrink-0 items-center gap-2 rounded-lg bg-surface py-2 pl-2 pr-3 shadow-[inset_0_0_0_1px_var(--color-separator)] active:opacity-70"
             >
               <TeamLogo src={r.team.logo} name={r.team.name} small />
               <span className="text-[14px] font-semibold">{r.team.name}</span>
@@ -174,10 +167,10 @@ export function StandingsView() {
       )}
 
       {table && (
-        <section className="px-4 pb-4" aria-label={`Classement ${table.name}`}>
+        <section className="px-4 pb-4 pt-3" aria-label={`Classement ${table.name}`}>
           <div className="overflow-hidden rounded-2xl bg-surface">
             {/* En-têtes */}
-            <div className={`grid ${cols} items-center gap-x-1.5 border-b border-separator px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-label-3`}>
+            <div className={`grid ${cols} items-center gap-x-1.5 border-b border-separator px-2 py-2 font-display text-[11px] font-medium text-label-3`}>
               <span className="text-center">#</span>
               <span>Équipe</span>
               {mode === "forme" ? (
@@ -226,7 +219,7 @@ export function StandingsView() {
                       <span className="text-center text-[13px] text-label-2 tabular-nums">
                         {r.goalDifference > 0 ? `+${r.goalDifference}` : r.goalDifference}
                       </span>
-                      <span className="text-center text-[15px] font-bold tabular-nums">{r.points}</span>
+                      <span className="font-display text-center text-[16px] font-semibold tabular-nums">{r.points}</span>
                       <span className="flex justify-end"><FormDots form={r.form} size={15} /></span>
                     </>
                   ) : (
@@ -235,7 +228,7 @@ export function StandingsView() {
                       <span className="text-center text-[13px] text-label-2 tabular-nums">{r.draw}</span>
                       <span className="text-center text-[13px] text-label-2 tabular-nums">{r.lost}</span>
                       <span className="text-center text-[13px] text-label-2 tabular-nums">{r.goalsFor}:{r.goalsAgainst}</span>
-                      <span className="text-center text-[15px] font-bold tabular-nums">{r.points}</span>
+                      <span className="font-display text-center text-[16px] font-semibold tabular-nums">{r.points}</span>
                     </>
                   )}
                 </button>
@@ -265,6 +258,6 @@ export function StandingsView() {
         onToggleFollow={toggleFollow}
         onClose={() => setSelected(null)}
       />
-    </PullToRefresh>
+    </div>
   );
 }

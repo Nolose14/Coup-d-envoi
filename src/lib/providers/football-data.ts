@@ -55,16 +55,37 @@ async function fdNow<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-/** Stade de chaque équipe d'une compétition. Change rarement : cache 7 jours. */
-function getTeamVenues(code: string) {
+const COLOR_WORDS: [RegExp, string][] = [
+  [/navy|dark blue/, "#0b2a5b"], [/sky|light blue|celeste/, "#5fb4e6"], [/royal blue|blue/, "#1f5aa6"],
+  [/claret|burgundy|bordeaux|maroon|garnet/, "#7a1f3d"], [/red|scarlet/, "#d7263d"],
+  [/yellow/, "#f6c700"], [/gold|amber/, "#c9a227"], [/orange/, "#f07f13"],
+  [/dark green/, "#0f5c32"], [/green/, "#1b8a3c"], [/purple|violet/, "#5b2a86"],
+  [/black/, "#151515"], [/white/, "#f2f2f2"], [/grey|gray|silver/, "#8a8f98"],
+];
+
+/** "Red / Navy Blue / White" → première couleur reconnue en hexadécimal. */
+function colorFrom(clubColors?: string | null): string | null {
+  for (const part of (clubColors ?? "").toLowerCase().split(/\/|,|-|&| and /)) {
+    const hit = COLOR_WORDS.find(([re]) => re.test(part.trim()));
+    if (hit) return hit[1];
+  }
+  return null;
+}
+
+interface TeamMeta { venue: string | null; color: string | null }
+
+/** Stade et couleur de chaque équipe d'une compétition. Change rarement : cache 7 jours. */
+function getTeamMeta(code: string) {
   return unstable_cache(
     async () => {
-      const data = await fd<{ teams: { id: number; venue?: string | null }[] }>(`/competitions/${code}/teams`);
-      const venues: Record<string, string> = {};
-      for (const t of data.teams) if (t.venue) venues[String(t.id)] = t.venue;
-      return venues;
+      const data = await fd<{ teams: { id: number; venue?: string | null; clubColors?: string | null }[] }>(
+        `/competitions/${code}/teams`,
+      );
+      const meta: Record<string, TeamMeta> = {};
+      for (const t of data.teams) meta[String(t.id)] = { venue: t.venue ?? null, color: colorFrom(t.clubColors) };
+      return meta;
     },
-    ["fd-team-venues", code],
+    ["fd-team-meta", code],
     { revalidate: 7 * 24 * 3600, tags: ["teams"] },
   )();
 }
@@ -87,10 +108,14 @@ function stageLabel(m: FdMatch, comp: ClubCompetition) {
   return m.matchday ? `Journée ${m.matchday}` : null;
 }
 
-const team = (t: FdTeam) => ({ name: t.shortName ?? t.name ?? "À déterminer", logo: t.crest ?? null });
+const team = (t: FdTeam, meta: Record<string, TeamMeta>) => ({
+  name: t.shortName ?? t.name ?? "À déterminer",
+  logo: t.crest ?? null,
+  color: t.id != null ? meta[String(t.id)]?.color ?? null : null,
+});
 
-function toRaw(m: FdMatch, comp: ClubCompetition, venues: Record<string, string>): RawMatch {
-  const stadium = m.venue ?? (m.homeTeam.id != null ? venues[String(m.homeTeam.id)] : undefined) ?? null;
+function toRaw(m: FdMatch, comp: ClubCompetition, meta: Record<string, TeamMeta>): RawMatch {
+  const stadium = m.venue ?? (m.homeTeam.id != null ? meta[String(m.homeTeam.id)]?.venue : undefined) ?? null;
   return {
     id: `fd-${m.id}`,
     section: "clubs",
@@ -100,8 +125,8 @@ function toRaw(m: FdMatch, comp: ClubCompetition, venues: Record<string, string>
     stage: m.stage,
     kickoff: m.utcDate,
     timeConfirmed: m.status === "TIMED",
-    home: team(m.homeTeam),
-    away: team(m.awayTeam),
+    home: team(m.homeTeam, meta),
+    away: team(m.awayTeam, meta),
     venue: { stadium, city: cityForStadium(stadium) },
   };
 }
@@ -114,13 +139,13 @@ export async function fetchClubMatches(): Promise<FetchResult> {
   // 4 compétitions = 4 requêtes (+ 4 pour les stades une fois par semaine) : sous la limite de 10/min.
   const results = await Promise.allSettled(
     CLUB_COMPETITIONS.map(async (comp) => {
-      const [data, venues] = await Promise.all([
+      const [data, meta] = await Promise.all([
         fd<{ matches: FdMatch[] }>(`/competitions/${comp.footballDataCode}/matches?dateFrom=${from}&dateTo=${to}`),
-        getTeamVenues(comp.footballDataCode).catch(() => ({}) as Record<string, string>),
+        getTeamMeta(comp.footballDataCode).catch(() => ({}) as Record<string, TeamMeta>),
       ]);
       return data.matches
         .filter((m) => (m.status === "SCHEDULED" || m.status === "TIMED") && new Date(m.utcDate) > now)
-        .map((m) => toRaw(m, comp, venues));
+        .map((m) => toRaw(m, comp, meta));
     }),
   );
 

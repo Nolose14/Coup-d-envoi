@@ -7,7 +7,8 @@ import { CLUB_COMPETITIONS } from "@/config/competitions";
 import { addDays, isoDay } from "@/lib/dates";
 import { getMatches } from "@/lib/matches";
 import { fd, type FdTeam } from "@/lib/providers/football-data";
-import { fetchTsdbClubTables } from "@/lib/providers/thesportsdb-clubs";
+import { TSDB_CLUB_COMPETITIONS } from "@/config/competitions";
+import { fetchTsdbClubTableFor } from "@/lib/providers/thesportsdb-clubs";
 import type { CompetitionId, RecentResult, ResultLetter, StandingTable, StandingsPayload, TeamInfo } from "@/lib/types";
 
 interface FdStandingRow {
@@ -115,10 +116,23 @@ const getTables = unstable_cache(
   { revalidate: 3 * 3600, tags: ["standings"] },
 );
 
-const getTsdbTables = unstable_cache(fetchTsdbClubTables, ["standings-tsdb-v2"], {
-  revalidate: 3 * 3600,
-  tags: ["standings"],
-});
+/** Ligue 2 et Ligue 3 : un cache par championnat. */
+async function getTsdbTables(): Promise<{ tables: StandingTable[]; warnings: string[] }> {
+  const results = await Promise.allSettled(
+    TSDB_CLUB_COMPETITIONS.map((c) =>
+      unstable_cache(() => fetchTsdbClubTableFor(c.id), ["standings-tsdb-v3", c.id], {
+        revalidate: 3 * 3600,
+        tags: ["standings"],
+      })(),
+    ),
+  );
+  return {
+    tables: results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : [])),
+    warnings: results.flatMap((r, i) =>
+      r.status === "rejected" ? [`${TSDB_CLUB_COMPETITIONS[i].name} : ${(r.reason as Error).message}`] : [],
+    ),
+  };
+}
 
 export async function getStandings(): Promise<StandingsPayload> {
   const [main, extra] = await Promise.allSettled([getTables(), getTsdbTables()]);
@@ -133,7 +147,7 @@ export async function getStandings(): Promise<StandingsPayload> {
     ],
     warnings: [
       ...(main.status === "fulfilled" ? main.value.warnings : [String((main.reason as Error).message)]),
-      ...(extra.status === "fulfilled" ? extra.value.warnings : [`Ligue 2 / Ligue 3 : ${(extra.reason as Error).message}`]),
+      ...(extra.status === "fulfilled" ? extra.value.warnings : [String((extra.reason as Error).message)]),
     ],
   };
 

@@ -9,11 +9,32 @@ import { unstable_cache } from "next/cache";
 import { resolveBroadcasters } from "@/config/diffuseurs";
 import { fetchInternationalMatches } from "@/lib/providers/manual-selections";
 import { fetchClubMatches } from "@/lib/providers/football-data";
-import { fetchTsdbClubMatches } from "@/lib/providers/thesportsdb-clubs";
+import { TSDB_CLUB_COMPETITIONS } from "@/config/competitions";
+import { fetchTsdbClubMatchesFor } from "@/lib/providers/thesportsdb-clubs";
 import type { FetchResult, MatchesPayload, Section } from "@/lib/types";
 
 const getClubsMain = unstable_cache(fetchClubMatches, ["clubs-v1"], { revalidate: 3600, tags: ["matches"] });
-const getClubsTsdb = unstable_cache(fetchTsdbClubMatches, ["clubs-tsdb-v2"], { revalidate: 6 * 3600, tags: ["matches"] });
+/** Ligue 2 et Ligue 3 : un cache par championnat, pour qu'un échec n'oblige pas à tout refaire. */
+async function getClubsTsdb(): Promise<FetchResult> {
+  const results = await Promise.allSettled(
+    TSDB_CLUB_COMPETITIONS.map((c) =>
+      unstable_cache(() => fetchTsdbClubMatchesFor(c.id), ["clubs-tsdb-v3", c.id], {
+        revalidate: 6 * 3600,
+        tags: ["matches"],
+      })(),
+    ),
+  );
+  const ok = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+  const warnings = results.flatMap((r, i) =>
+    r.status === "rejected" ? [`${TSDB_CLUB_COMPETITIONS[i].name} : ${(r.reason as Error).message}`] : [],
+  );
+  if (ok.length === 0) throw new Error(warnings.join(" "));
+  return {
+    updatedAt: ok.map((p) => p.updatedAt).sort()[0],
+    matches: ok.flatMap((p) => p.matches),
+    warnings,
+  };
+}
 
 /** Clubs = LDC, Ligue 1, Premier League, Liga (football-data) + Ligue 2, Ligue 3 (TheSportsDB). */
 async function getClubs(): Promise<FetchResult> {
@@ -22,7 +43,7 @@ async function getClubs(): Promise<FetchResult> {
   const parts = [main, extra].flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
   const warnings = parts.flatMap((p) => p.warnings);
   if (main.status === "rejected") warnings.push((main.reason as Error).message);
-  if (extra.status === "rejected") warnings.push(`Ligue 2 / Ligue 3 : ${(extra.reason as Error).message}`);
+  if (extra.status === "rejected") warnings.push((extra.reason as Error).message);
   return {
     updatedAt: parts.map((p) => p.updatedAt).sort()[0],
     matches: parts.flatMap((p) => p.matches),

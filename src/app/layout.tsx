@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { TabBar } from "@/components/TabBar";
+import "@fontsource-variable/oswald";
 import "./globals.css";
 
 // Écrans de démarrage iOS : une image par taille d'écran (iPhone 13 = 390×844 @3x).
@@ -35,7 +36,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#000000",
+  themeColor: "#060a12",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

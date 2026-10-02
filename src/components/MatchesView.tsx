@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { dayLabel, groupByDay, relativeUpdate } from "@/lib/dates";
+import { DayHeader } from "./DayHeader";
+import { PageHeader } from "./PageHeader";
 import type { MatchesPayload, Section } from "@/lib/types";
 import { MatchCard } from "./MatchCard";
-import { PullToRefresh } from "./PullToRefresh";
 import { TeamLogo } from "./TeamLogo";
 import { TeamPicker, type TeamOption } from "./TeamPicker";
 
@@ -147,17 +148,21 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
   let cardIndex = 0;
 
   return (
-    <PullToRefresh onRefresh={load} disabled={pickerOpen}>
-      <header className="px-4 pt-4">
-        <h1 className="text-[34px] font-bold leading-tight tracking-tight">{title}</h1>
-        <p className="mt-0.5 h-5 text-[13px] text-label-2" aria-live="polite">
-          {loading && !data ? "Chargement…" : data ? relativeUpdate(data.updatedAt) : ""}
-        </p>
-      </header>
+    <div>
+      <PageHeader
+        title={title}
+        onRefresh={load}
+        refreshing={loading}
+        status={loading && !data ? "Chargement…" : data ? relativeUpdate(data.updatedAt) : ""}
+        live={upcoming.some((m) => {
+          const t = new Date(m.kickoff).getTime();
+          return Date.now() >= t && Date.now() < t + 2 * 3600_000;
+        })}
+      />
 
       {/* Filtres, collés en haut au défilement */}
       <div
-        className="sticky z-10 bg-bg/85 backdrop-blur-xl"
+        className="sticky z-10 border-b border-separator bg-bg/90 backdrop-blur-xl"
         style={{ top: "env(safe-area-inset-top)" }}
       >
         <div className="flex gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -165,25 +170,21 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
             type="button"
             onClick={() => setPickerOpen(true)}
             aria-haspopup="dialog"
-            className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-medium transition-colors active:opacity-70 ${
-              selectedTeams.length > 0 ? "bg-accent text-white" : "bg-surface text-label"
-            }`}
+            className={`chip ${selectedTeams.length > 0 ? "chip-accent" : ""}`}
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
               <path d="M4 6h16M7 12h10M10 18h4" />
             </svg>
             Équipes{selectedTeams.length > 0 && ` (${selectedTeams.length})`}
           </button>
-          <span className="my-1.5 w-px shrink-0 bg-separator" aria-hidden />
+          <span className="my-1 w-px shrink-0 bg-separator" aria-hidden />
           {availableFilters.map((f) => (
             <button
               key={f.id}
               type="button"
               onClick={() => setFilter(f.id)}
               aria-pressed={activeFilter === f.id}
-              className={`h-8 shrink-0 rounded-full px-3.5 text-[14px] font-medium transition-colors active:opacity-70 ${
-                activeFilter === f.id ? "bg-label text-bg" : "bg-surface text-label"
-              }`}
+              className="chip"
             >
               {f.label}
             </button>
@@ -198,7 +199,7 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
                 type="button"
                 onClick={() => updateTeams(selectedTeams.filter((n) => n !== name))}
                 aria-label={`Retirer ${name}`}
-                className="flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-surface py-1 pl-1.5 pr-2.5 text-[13px] font-medium active:opacity-70"
+                className="chip pl-1.5 normal-case"
               >
                 <TeamLogo src={teamLogo(name)} name={name} small />
                 {name}
@@ -244,17 +245,18 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
             {selectedTeams.length > 0
               ? "Pas de match prévu pour les équipes choisies avec ce filtre."
               : activeFilter === "all"
-                ? "Le calendrier n'est pas encore publié. Tire vers le bas pour actualiser."
+                ? "Le calendrier n'est pas encore publié."
                 : "Rien de prévu pour ce filtre. Essaie « Tout »."}
           </p>
         </div>
       )}
 
-      <div className="space-y-6 px-4 pb-6">
+      <div className="space-y-7 px-4 pb-6 pt-4">
         {days.map((day) => (
           <section key={day.key}>
-            <h2 className="mb-2 px-1 text-[20px] font-bold tracking-tight">{dayLabel(day.key)}</h2>
-            <div className="space-y-2.5">
+            <h2 className="sr-only">{dayLabel(day.key)}</h2>
+            <DayHeader dayKey={day.key} label={dayLabel(day.key)} count={day.matches.length} />
+            <div className="space-y-3">
               {day.matches.map((m) => (
                 <MatchCard key={m.id} match={m} index={cardIndex++} />
               ))}
@@ -269,6 +271,6 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
         onChange={updateTeams}
         onClose={() => setPickerOpen(false)}
       />
-    </PullToRefresh>
+    </div>
   );
 }

@@ -7,6 +7,7 @@ export type CompetitionId =
 export interface TeamInfo {
   name: string;
   logo: string | null;
+  color?: string | null; // couleur principale du club, si connue
 }
 
 export interface Venue {

@@ -26,9 +26,14 @@ async function upcomingFor(comp: TsdbClubCompetition, now: Date): Promise<RawMat
   const next = await tsdb<{ events?: TsdbEvent[] | null }>(`eventsnextleague.php?id=${leagueId}`);
   for (const e of next?.events ?? []) events.set(e.idEvent, e);
 
-  // Complète jour par jour (la clé gratuite ne renvoie qu'un échantillon)
+  // Complète jour par jour (la clé gratuite ne renvoie qu'un échantillon).
+  // Pour économiser les requêtes : seulement les jours de match habituels
+  // (vendredi → lundi) et les jours déjà repérés dans l'échantillon (soirs de semaine).
+  const known = new Set([...events.values()].map((e) => e.dateEvent).filter(Boolean) as string[]);
   for (let i = 0; i < TSDB_CLUB_WINDOW_DAYS; i++) {
-    const day = addDays(now, i).toISOString().slice(0, 10);
+    const date = addDays(now, i);
+    const day = date.toISOString().slice(0, 10);
+    if (![5, 6, 0, 1].includes(date.getUTCDay()) && !known.has(day)) continue;
     const data = await tsdb<{ events?: TsdbEvent[] | null }>(`eventsday.php?d=${day}&l=${leagueId}`);
     for (const e of data?.events ?? []) events.set(e.idEvent, e);
   }
@@ -55,20 +60,12 @@ async function upcomingFor(comp: TsdbClubCompetition, now: Date): Promise<RawMat
   return out;
 }
 
-export async function fetchTsdbClubMatches(): Promise<FetchResult> {
+/** Matchs à venir d'un championnat (lève une erreur en cas d'échec : rien n'est mis en cache). */
+export async function fetchTsdbClubMatchesFor(compId: string): Promise<FetchResult> {
+  const comp = TSDB_CLUB_COMPETITIONS.find((c) => c.id === compId);
+  if (!comp) throw new Error(`Compétition inconnue : ${compId}`);
   const now = new Date();
-  const matches: RawMatch[] = [];
-  const warnings: string[] = [];
-  for (const comp of TSDB_CLUB_COMPETITIONS) {
-    try {
-      matches.push(...(await upcomingFor(comp, now)));
-    } catch (e) {
-      warnings.push(`${comp.name} : ${(e as Error).message}`);
-    }
-  }
-  // Tout a échoué : on lève une erreur pour ne pas garder ce résultat vide en cache 6 h
-  if (matches.length === 0 && warnings.length === TSDB_CLUB_COMPETITIONS.length) throw new Error(warnings[0]);
-  return { updatedAt: now.toISOString(), matches, warnings };
+  return { updatedAt: now.toISOString(), matches: await upcomingFor(comp, now), warnings: [] };
 }
 
 /* ---------------- Classements ---------------- */
@@ -161,16 +158,9 @@ async function tableFor(comp: TsdbClubCompetition): Promise<StandingTable> {
   };
 }
 
-export async function fetchTsdbClubTables(): Promise<{ tables: StandingTable[]; warnings: string[] }> {
-  const tables: StandingTable[] = [];
-  const warnings: string[] = [];
-  for (const comp of TSDB_CLUB_COMPETITIONS) {
-    try {
-      tables.push(await tableFor(comp));
-    } catch (e) {
-      warnings.push(`${comp.name} : ${(e as Error).message}`);
-    }
-  }
-  if (tables.length === 0) throw new Error(warnings[0] ?? "classements indisponibles.");
-  return { tables, warnings };
+/** Classement d'un championnat (lève une erreur en cas d'échec : rien n'est mis en cache). */
+export async function fetchTsdbClubTableFor(compId: string): Promise<StandingTable> {
+  const comp = TSDB_CLUB_COMPETITIONS.find((c) => c.id === compId);
+  if (!comp) throw new Error(`Compétition inconnue : ${compId}`);
+  return tableFor(comp);
 }
