@@ -13,7 +13,7 @@ import { fetchTsdbClubMatches } from "@/lib/providers/thesportsdb-clubs";
 import type { FetchResult, MatchesPayload, Section } from "@/lib/types";
 
 const getClubsMain = unstable_cache(fetchClubMatches, ["clubs-v1"], { revalidate: 3600, tags: ["matches"] });
-const getClubsTsdb = unstable_cache(fetchTsdbClubMatches, ["clubs-tsdb-v1"], { revalidate: 6 * 3600, tags: ["matches"] });
+const getClubsTsdb = unstable_cache(fetchTsdbClubMatches, ["clubs-tsdb-v2"], { revalidate: 6 * 3600, tags: ["matches"] });
 
 /** Clubs = LDC, Ligue 1, Premier League, Liga (football-data) + Ligue 2, Ligue 3 (TheSportsDB). */
 async function getClubs(): Promise<FetchResult> {

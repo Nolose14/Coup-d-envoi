@@ -115,7 +115,7 @@ const getTables = unstable_cache(
   { revalidate: 3 * 3600, tags: ["standings"] },
 );
 
-const getTsdbTables = unstable_cache(fetchTsdbClubTables, ["standings-tsdb-v1"], {
+const getTsdbTables = unstable_cache(fetchTsdbClubTables, ["standings-tsdb-v2"], {
   revalidate: 3 * 3600,
   tags: ["standings"],
 });

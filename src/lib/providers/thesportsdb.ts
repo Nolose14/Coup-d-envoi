@@ -18,12 +18,12 @@ const BASE = "https://www.thesportsdb.com/api/v1/json";
 
 let lastCall = 0;
 async function throttle() {
-  const wait = lastCall + 2100 - Date.now(); // ~28 requêtes/minute maximum
+  const wait = lastCall + 2600 - Date.now(); // ~23 requêtes/minute, marge pour les scans parallèles
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   lastCall = Date.now();
 }
 
-export async function tsdb<T>(path: string): Promise<T | null> {
+export async function tsdb<T>(path: string, attempt = 0): Promise<T | null> {
   let lastStatus = 0;
   for (const key of KEYS) {
     await throttle();
@@ -33,7 +33,15 @@ export async function tsdb<T>(path: string): Promise<T | null> {
       const text = await res.text();
       return text ? (JSON.parse(text) as T) : null;
     }
-    if (res.status === 429) throw new Error("TheSportsDB : trop de requêtes, nouvel essai plus tard.");
+    if (res.status === 429) {
+      // Limite atteinte (souvent parce qu'un autre scan tourne en parallèle) :
+      // on patiente puis on réessaie, au lieu d'abandonner tout de suite.
+      if (attempt < 3) {
+        await new Promise((r) => setTimeout(r, 20_000 * (attempt + 1)));
+        return tsdb<T>(path, attempt + 1);
+      }
+      throw new Error("TheSportsDB : trop de requêtes, nouvel essai plus tard.");
+    }
   }
   throw new Error(`TheSportsDB : erreur ${lastStatus}.`);
 }

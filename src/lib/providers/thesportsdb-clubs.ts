@@ -66,6 +66,8 @@ export async function fetchTsdbClubMatches(): Promise<FetchResult> {
       warnings.push(`${comp.name} : ${(e as Error).message}`);
     }
   }
+  // Tout a échoué : on lève une erreur pour ne pas garder ce résultat vide en cache 6 h
+  if (matches.length === 0 && warnings.length === TSDB_CLUB_COMPETITIONS.length) throw new Error(warnings[0]);
   return { updatedAt: now.toISOString(), matches, warnings };
 }
 
@@ -169,5 +171,6 @@ export async function fetchTsdbClubTables(): Promise<{ tables: StandingTable[]; 
       warnings.push(`${comp.name} : ${(e as Error).message}`);
     }
   }
+  if (tables.length === 0) throw new Error(warnings[0] ?? "classements indisponibles.");
   return { tables, warnings };
 }
