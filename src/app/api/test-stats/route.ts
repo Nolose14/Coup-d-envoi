@@ -1,5 +1,5 @@
 /**
- * PAGE DE TEST TEMPORAIRE (version 3) : que donne vraiment Highlightly en gratuit ?
+ * PAGE DE TEST TEMPORAIRE (version 4) : que donne vraiment Highlightly en gratuit ?
  * Ouvre https://coup-d-envoi.vercel.app/api/test-stats
  *
  * La v2 a montré que l'offre gratuite donne tout (« All data available »), que la
@@ -57,57 +57,58 @@ async function detailsMatch(m: Obj) {
   };
 }
 
-async function chercherLigue(nom: string, paysVoulu: RegExp) {
-  const r = await call(`/leagues?${new URLSearchParams({ leagueName: nom, limit: "20" })}`);
-  const ligues = liste(r.json).map((l) => ({ id: str(l.id), nom: str(l.name), pays: pays(l) }));
-  const choisie = ligues.find((l) => paysVoulu.test(`${l.nom} ${l.pays}`)) ?? ligues[0] ?? null;
-  return { statut: r.status, requetesRestantes: r.restant, ligues: ligues.slice(0, 10), choisie, brut: ligues.length ? undefined : apercu(r.json, 600) };
-}
+const resume = (m: Obj) =>
+  `${str(m.date).slice(0, 16).replace("T", " ")} UTC · ${str((m.homeTeam as Obj)?.name)} – ${str((m.awayTeam as Obj)?.name)} · ${etat(m)} ${str(((m.state as Obj)?.score as Obj)?.current)}`.trim();
 
-/** Tous les matchs d'un championnat sur la saison, puis le plus récent qui est terminé. */
-async function dernierMatchTermine(leagueId: string) {
-  const r = await call(`/matches?${new URLSearchParams({ leagueId, season: "2026", limit: "100" })}`);
+/** Une page de matchs d'un championnat, résumée. */
+async function page(params: Record<string, string>) {
+  const r = await call(`/matches?${new URLSearchParams({ limit: "100", ...params })}`);
   const data = liste(r.json);
-  const finis = data.filter(termine).sort((x, y) => str(y.date).localeCompare(str(x.date)));
+  const tries = [...data].sort((x, y) => str(x.date).localeCompare(str(y.date)));
   return {
     statut: r.status,
     requetesRestantes: r.restant,
     nombreRecu: data.length,
     totalAnnonce: ((r.json as Obj)?.pagination as Obj)?.totalCount,
-    nombreTermines: finis.length,
-    datesDesMatchs: [...new Set(data.map((m) => str(m.date).slice(0, 10)))].sort().slice(0, 40),
-    match: finis[0] ?? null,
-    brut: data.length ? undefined : apercu(r.json, 600),
+    termines: tries.filter(termine),
+    premiers: tries.slice(0, 6).map(resume),
   };
+}
+
+async function fiche(m: Obj) {
+  const d = await detailsMatch(m);
+  const f = await call(`/matches/${str(m.id)}`);
+  return { ...d, ficheComplete: { statut: f.status, requetesRestantes: f.restant, apercu: apercu(f.json, 3000) } };
 }
 
 const run = unstable_cache(
   async () => {
-    // 1. Identifiant de la Ligue des champions (la v2 a montré que le nom doit être exact)
-    let cl = await chercherLigue("UEFA Champions League", /world|europe/i);
-    if (!cl.choisie) cl = await chercherLigue("Champions League", /world|europe/i);
+    const L1 = "52695";
+    // 1. Les 62 matchs de Ligue 1 2026 que la v3 n'avait pas reçus (au-delà des 100 premiers)
+    const suite = await page({ leagueId: L1, season: "2026", offset: "100" });
+    // 2. Dernière journée avant la trêve internationale
+    const sept: Awaited<ReturnType<typeof page>>[] = [];
+    for (const date of ["2026-09-20", "2026-09-19", "2026-09-21"]) {
+      const p = await page({ leagueId: L1, date });
+      sept.push(p);
+      if (p.termines.length) break;
+    }
+    const recent = [...suite.termines, ...sept.flatMap((p) => p.termines)].sort((x, y) => str(y.date).localeCompare(str(x.date)))[0];
 
-    // 2. Ligue 1 (identifiant 52695 trouvé par la v2) et LDC : toute la saison, puis le dernier match terminé
-    const l1 = await dernierMatchTermine("52695");
-    const ldc = cl.choisie ? await dernierMatchTermine(cl.choisie.id) : null;
+    // 3. Valeur sûre : un match terminé de la saison passée, pour voir le format des compositions et stats
+    const passee = await page({ leagueId: L1, season: "2025" });
+    const ancien = passee.termines[passee.termines.length - 1];
 
-    // 3. Composition, statistiques et fiche complète du dernier match terminé
-    const l1Details = l1.match ? await detailsMatch(l1.match) : null;
-    const l1Fiche = l1.match ? await call(`/matches/${str(l1.match.id)}`) : null;
-    const ldcDetails = ldc?.match ? await detailsMatch(ldc.match) : null;
-
-    const sansMatch = <T extends { match: unknown }>(o: T) => ({ ...o, match: undefined });
     return {
       testeLe: new Date().toISOString(),
-      ligue1_saison: sansMatch(l1),
-      ligue1_dernierMatch: l1Details,
-      ligue1_ficheComplete: l1Fiche && { statut: l1Fiche.status, requetesRestantes: l1Fiche.restant, apercu: apercu(l1Fiche.json, 3000) },
-      ldc_recherche: cl,
-      ldc_saison: ldc && sansMatch(ldc),
-      ldc_dernierMatch: ldcDetails,
+      ligue1_2026_suite: { ...suite, termines: suite.termines.length, derniersTermines: suite.termines.slice(-6).map(resume) },
+      ligue1_septembre: sept.map((p) => ({ ...p, termines: p.termines.length })),
+      ligue1_matchRecent: recent ? await fiche(recent) : "aucun match terminé trouvé pour la saison 2026",
+      ligue1_2025: { ...passee, termines: passee.termines.length },
+      ligue1_matchSaisonPassee: ancien ? await fiche(ancien) : null,
     };
   },
-  ["test-stats-v3"],
+  ["test-stats-v4"],
   { revalidate: 3600 },
 );
 
