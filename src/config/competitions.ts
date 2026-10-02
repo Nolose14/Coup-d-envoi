@@ -17,7 +17,7 @@ export interface InternationalCompetition {
 
 /** Nombre de jours affichés à l'avance. */
 export const CLUB_WINDOW_DAYS = 30;
-export const INTERNATIONAL_WINDOW_DAYS = 120;
+export const INTERNATIONAL_WINDOW_DAYS = 365;
 
 export const CLUB_COMPETITIONS: ClubCompetition[] = [
   { id: "CL",  name: "Ligue des champions", short: "LDC",            footballDataCode: "CL",  color: "#8EA2FF" },
