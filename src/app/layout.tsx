@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { SwipeNav } from "@/components/SwipeNav";
 import { TabBar } from "@/components/TabBar";
 import "@fontsource-variable/oswald";
 import "./globals.css";
@@ -43,7 +44,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr">
       <body className="font-sans">
-        <main className="mx-auto max-w-xl pb-[calc(84px+env(safe-area-inset-bottom))]">{children}</main>
+        <main className="mx-auto max-w-xl pb-[calc(84px+env(safe-area-inset-bottom))]">
+          <SwipeNav>{children}</SwipeNav>
+        </main>
         <TabBar />
         <ServiceWorkerRegister />
       </body>
