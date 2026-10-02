@@ -22,7 +22,10 @@ export const NATION_NAMES_FR: Record<string, string> = {
   "Ivory Coast": "Côte d'Ivoire", "Côte d'Ivoire": "Côte d'Ivoire", Cameroon: "Cameroun",
   Egypt: "Égypte", Nigeria: "Nigeria", Japan: "Japon", "South Korea": "Corée du Sud",
   "Korea Republic": "Corée du Sud", Australia: "Australie", "Saudi Arabia": "Arabie saoudite",
-  Qatar: "Qatar", Iran: "Iran",
+  Qatar: "Qatar", Iran: "Iran", "Faroe Islands": "Îles Féroé", Cyprus: "Chypre", Malta: "Malte",
+  Estonia: "Estonie", Latvia: "Lettonie", Lithuania: "Lituanie", Belarus: "Biélorussie", Moldova: "Moldavie",
+  Kazakhstan: "Kazakhstan", Andorra: "Andorre", "San Marino": "Saint-Marin", Gibraltar: "Gibraltar",
+  Liechtenstein: "Liechtenstein", Bulgaria: "Bulgarie", "Macedonia": "Macédoine du Nord",
 };
 
 export const toFrenchNation = (name: string) => NATION_NAMES_FR[name] ?? name;
@@ -39,7 +42,11 @@ const FLAG_CODES: Record<string, string> = {
   Brésil: "br", Argentine: "ar", Uruguay: "uy", Colombie: "co", "États-Unis": "us",
   Mexique: "mx", Canada: "ca", Maroc: "ma", Algérie: "dz", Tunisie: "tn", Sénégal: "sn",
   "Côte d'Ivoire": "ci", Cameroun: "cm", Égypte: "eg", Nigeria: "ng", Japon: "jp",
-  "Corée du Sud": "kr", Australie: "au",
+  "Corée du Sud": "kr", Australie: "au", "Bosnie-Herzégovine": "ba", "Macédoine du Nord": "mk",
+  Monténégro: "me", Israël: "il", Luxembourg: "lu", Kosovo: "xk", Arménie: "am", Azerbaïdjan: "az",
+  "Îles Féroé": "fo", Chypre: "cy", Malte: "mt", Estonie: "ee", Lettonie: "lv", Lituanie: "lt",
+  Biélorussie: "by", Moldavie: "md", Kazakhstan: "kz", Andorre: "ad", "Saint-Marin": "sm",
+  Gibraltar: "gi", Liechtenstein: "li", Bulgarie: "bg",
 };
 
 export function flagUrl(nameFr: string): string | null {

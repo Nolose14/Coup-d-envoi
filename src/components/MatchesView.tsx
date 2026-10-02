@@ -74,17 +74,28 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
     };
   }, [load]);
 
-  const days = useMemo(() => {
-    if (!data) return [];
+  const upcoming = useMemo(() => {
     const now = Date.now();
-    const visible = data.matches.filter((m) => {
-      if (new Date(m.kickoff).getTime() < now - 2 * 3600_000) return false; // match déjà fini
-      if (filter === "all") return true;
-      if (filter === "france") return m.home.name === "France" || m.away.name === "France";
-      return m.competition === filter;
-    });
-    return groupByDay(visible);
-  }, [data, filter]);
+    return (data?.matches ?? []).filter((m) => new Date(m.kickoff).getTime() >= now - 2 * 3600_000);
+  }, [data]);
+
+  const matchesFilter = (m: MatchesPayload["matches"][number], id: string) => {
+    if (id === "all") return true;
+    if (id === "france") return m.home.name === "France" || m.away.name === "France";
+    return m.competition === id;
+  };
+
+  // On n'affiche que les filtres qui contiennent au moins un match
+  const availableFilters = useMemo(
+    () => filters.filter((f) => f.id === "all" || upcoming.some((m) => matchesFilter(m, f.id))),
+    [filters, upcoming],
+  );
+  const activeFilter = availableFilters.some((f) => f.id === filter) ? filter : "all";
+
+  const days = useMemo(
+    () => groupByDay(upcoming.filter((m) => matchesFilter(m, activeFilter))),
+    [upcoming, activeFilter],
+  );
 
   let cardIndex = 0;
 
@@ -103,14 +114,14 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
         style={{ top: "env(safe-area-inset-top)" }}
       >
         <div className="flex gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {filters.map((f) => (
+          {availableFilters.map((f) => (
             <button
               key={f.id}
               type="button"
               onClick={() => setFilter(f.id)}
-              aria-pressed={filter === f.id}
+              aria-pressed={activeFilter === f.id}
               className={`h-8 shrink-0 rounded-full px-3.5 text-[14px] font-medium transition-colors active:opacity-70 ${
-                filter === f.id ? "bg-label text-bg" : "bg-surface text-label"
+                activeFilter === f.id ? "bg-label text-bg" : "bg-surface text-label"
               }`}
             >
               {f.label}
@@ -149,7 +160,7 @@ export function MatchesView({ section, title, filters }: { section: Section; tit
         <div className="px-8 pt-16 text-center">
           <p className="text-[17px] font-semibold">Aucun match à venir</p>
           <p className="mt-1 text-[15px] text-label-2">
-            {filter === "all"
+            {activeFilter === "all"
               ? "Le calendrier n'est pas encore publié. Tire vers le bas pour actualiser."
               : "Rien de prévu pour ce filtre. Essaie « Tout »."}
           </p>

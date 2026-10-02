@@ -12,6 +12,10 @@ export interface InternationalCompetition {
   id: CompetitionId;
   name: string;
   color: string;
+  /** Nom de la compétition chez TheSportsDB (sert à la retrouver automatiquement). */
+  tsdbName: RegExp;
+  /** Identifiants TheSportsDB probables, vérifiés automatiquement avant usage. */
+  tsdbIds: number[];
 }
 
 /** Nombre de jours affichés à l'avance. */
@@ -26,10 +30,10 @@ export const CLUB_COMPETITIONS: ClubCompetition[] = [
 ];
 
 export const INTERNATIONAL_COMPETITIONS: InternationalCompetition[] = [
-  { id: "NL",       name: "Ligue des nations",      color: "#8EA2FF" },
-  { id: "WCQ",      name: "Qualifications Mondial", color: "#FF8A7A" },
-  { id: "ECQ",      name: "Qualifications Euro",    color: "#5EE0C4" },
-  { id: "FRIENDLY", name: "Match amical",           color: "#C7CBD6" },
+  { id: "NL",       name: "Ligue des nations",      color: "#8EA2FF", tsdbName: /nations league/i,                        tsdbIds: [4490] },
+  { id: "WCQ",      name: "Qualifications Mondial", color: "#FF8A7A", tsdbName: /world cup.*(qualif|uefa)|qualif.*world/i, tsdbIds: [] },
+  { id: "ECQ",      name: "Qualifications Euro",    color: "#5EE0C4", tsdbName: /(euro|european championship).*qualif/i,  tsdbIds: [] },
+  { id: "FRIENDLY", name: "Match amical",           color: "#C7CBD6", tsdbName: /friendl/i,                               tsdbIds: [4562] },
 ];
 
 export const COMPETITION_COLORS: Record<string, string> = Object.fromEntries(
