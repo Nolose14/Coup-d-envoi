@@ -10,7 +10,7 @@ import type { FetchResult, RawMatch } from "@/lib/types";
 
 const BASE = "https://api.football-data.org/v4";
 
-interface FdTeam { id: number | null; name: string | null; shortName: string | null; crest: string | null }
+export interface FdTeam { id: number | null; name: string | null; shortName: string | null; crest: string | null }
 interface FdMatch {
   id: number;
   utcDate: string;
@@ -22,7 +22,29 @@ interface FdMatch {
   awayTeam: FdTeam;
 }
 
-async function fd<T>(path: string): Promise<T> {
+/**
+ * File d'attente : un appel toutes les 6,5 s au maximum (≈ 9 par minute),
+ * pour ne jamais dépasser la limite gratuite de 10 appels/minute,
+ * même quand matchs et classements se mettent à jour en même temps.
+ */
+let queue: Promise<unknown> = Promise.resolve();
+let lastCall = 0;
+function scheduled<T>(task: () => Promise<T>): Promise<T> {
+  const run = queue.then(async () => {
+    const wait = lastCall + 6500 - Date.now();
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    lastCall = Date.now();
+    return task();
+  });
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+export function fd<T>(path: string): Promise<T> {
+  return scheduled(() => fdNow<T>(path));
+}
+
+async function fdNow<T>(path: string): Promise<T> {
   const token = process.env.FOOTBALL_DATA_TOKEN;
   if (!token) throw new Error("Clé football-data.org absente (FOOTBALL_DATA_TOKEN dans Vercel).");
 

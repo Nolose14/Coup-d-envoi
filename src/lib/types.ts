@@ -50,3 +50,45 @@ export interface MatchesPayload {
   matches: MatchItem[];
   warnings: string[];
 }
+
+/* ---------- Classements ---------- */
+
+export type ResultLetter = "V" | "N" | "D";
+
+export interface RecentResult {
+  date: string;              // ISO
+  opponent: TeamInfo;
+  home: boolean;             // true = à domicile
+  goalsFor: number;
+  goalsAgainst: number;
+  result: ResultLetter;
+  competition: CompetitionId;
+}
+
+export interface StandingRow {
+  position: number;
+  team: TeamInfo;
+  played: number;
+  won: number;
+  draw: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  points: number;
+  form: ResultLetter[];      // 5 derniers, du plus récent au plus ancien
+  recent: RecentResult[];    // 5 derniers matchs détaillés
+  nextMatch: MatchItem | null;
+}
+
+export interface StandingTable {
+  competition: CompetitionId;
+  name: string;
+  rows: StandingRow[];
+}
+
+export interface StandingsPayload {
+  updatedAt: string;
+  tables: StandingTable[];
+  warnings: string[];
+}

@@ -3,12 +3,12 @@
  * matchs même sans réseau (métro, avion, RER sans 4G…).
  * Change VERSION pour forcer une mise à jour des fichiers en cache.
  */
-const VERSION = "v1";
+const VERSION = "v2";
 const SHELL = `shell-${VERSION}`;
 const DATA = `data-${VERSION}`;
 const IMAGES = `images-${VERSION}`;
 
-const PRECACHE = ["/clubs", "/selections", "/manifest.webmanifest", "/icon-192.png", "/apple-touch-icon.png"];
+const PRECACHE = ["/clubs", "/selections", "/classements", "/manifest.webmanifest", "/icon-192.png", "/apple-touch-icon.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(SHELL).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
@@ -52,7 +52,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   // Données des matchs : réseau d'abord, cache si hors ligne
-  if (url.origin === location.origin && url.pathname.startsWith("/api/matches")) {
+  if (url.origin === location.origin && (url.pathname.startsWith("/api/matches") || url.pathname.startsWith("/api/standings"))) {
     event.respondWith(networkFirst(request, DATA));
     return;
   }

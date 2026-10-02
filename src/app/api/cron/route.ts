@@ -6,6 +6,7 @@
 import { revalidateTag } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { getMatches } from "@/lib/matches";
+import { getStandings } from "@/lib/standings";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // le scan des sélections est volontairement ralenti
@@ -17,11 +18,17 @@ export async function GET(req: NextRequest) {
   }
 
   revalidateTag("matches");
-  const [clubs, selections] = await Promise.allSettled([getMatches("clubs"), getMatches("selections")]);
+  revalidateTag("standings");
+  const [clubs, selections, standings] = await Promise.allSettled([
+    getMatches("clubs"),
+    getMatches("selections"),
+    getStandings(),
+  ]);
 
   return NextResponse.json({
     ok: true,
     clubs: clubs.status === "fulfilled" ? clubs.value.matches.length : String(clubs.reason),
     selections: selections.status === "fulfilled" ? selections.value.matches.length : String(selections.reason),
+    standings: standings.status === "fulfilled" ? standings.value.tables.length : String(standings.reason),
   });
 }

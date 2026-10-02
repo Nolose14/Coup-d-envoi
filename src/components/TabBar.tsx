@@ -21,6 +21,17 @@ const tabs = [
       </>
     ),
   },
+  {
+    href: "/classements",
+    label: "Classements",
+    icon: (
+      <>
+        <path d="M8 21h8M12 16v5" />
+        <path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" />
+        <path d="M17 6h2.5v1.5A3.5 3.5 0 0 1 16 11M7 6H4.5v1.5A3.5 3.5 0 0 0 8 11" />
+      </>
+    ),
+  },
 ];
 
 export function TabBar() {
